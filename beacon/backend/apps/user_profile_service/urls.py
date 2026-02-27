@@ -6,3 +6,7 @@ urlpatterns = [
     path('<str:user_id>/update/', views.UpdateProfileView.as_view(), name='user-profile-update'),
     path('<str:user_id>/achievements/', views.AchievementView.as_view(), name='user-achievements'),
 ]
+
+urlpatterns_internal = [
+    path('<str:user_id>/', views.InternalProfileView.as_view(), name='internal-profile-detail'),
+]
