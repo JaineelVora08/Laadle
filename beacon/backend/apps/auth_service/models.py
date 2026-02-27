@@ -183,6 +183,8 @@ class TrustMetrics(models.Model):
     alignment_score = models.FloatField(default=0.0)
     follow_through_rate = models.FloatField(default=0.0)
     achievement_weight = models.FloatField(default=0.0)
+    n_success = models.IntegerField(default=0)
+    n_total = models.IntegerField(default=0)
 
     def clean(self):
         super().clean()
