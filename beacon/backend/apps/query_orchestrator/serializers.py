@@ -69,11 +69,15 @@ class FinalAdviceResponseSerializer(serializers.Serializer):
 class QueryStatusResponseSerializer(serializers.Serializer):
     """Serializes QueryStatusResponse."""
     query_id = serializers.UUIDField()
+    content = serializers.CharField(required=False, allow_blank=True, default='')
     status = serializers.CharField()
+    is_resolved = serializers.BooleanField(required=False, default=False)
     provisional_answer = serializers.CharField(allow_null=True)
     final_answer = serializers.CharField(allow_null=True)
     follow_up_questions = serializers.ListField(child=serializers.CharField())
     conflict_detected = serializers.BooleanField()
+    conflict_details = serializers.CharField(allow_null=True, required=False)
+    contributing_seniors = ContributingSeniorSerializer(many=True, required=False)
 
 
 class FollowUpRequestSerializer(serializers.Serializer):

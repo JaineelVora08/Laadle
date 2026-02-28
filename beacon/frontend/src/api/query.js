@@ -38,3 +38,8 @@ export const getSeniorPendingQueries = async (seniorId) => {
     const response = await axiosInstance.get(`/api/query/pending/senior/${seniorId}/`);
     return response.data;
 };
+
+export const getStudentQueries = async (studentId) => {
+    const response = await axiosInstance.get(`/api/query/student/${studentId}/`);
+    return response.data;
+};

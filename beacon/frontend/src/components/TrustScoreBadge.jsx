@@ -4,14 +4,17 @@ import React from 'react';
  * TrustScoreBadge — circular SVG badge, dark theme colors.
  */
 export default function TrustScoreBadge({ score }) {
-    const pct = Math.round((score || 0) * 100);
+    const raw = score || 0;
+    // If score > 1, treat it as already a percentage-like value; normalize to 0-1
+    const normalized = raw > 1 ? Math.min(raw / 10, 1) : Math.min(raw, 1);
+    const pct = Math.round(normalized * 100);
     let color = '#ef4444';
-    if (score >= 0.8) color = '#22c55e';
-    else if (score >= 0.5) color = '#f59e0b';
+    if (normalized >= 0.8) color = '#22c55e';
+    else if (normalized >= 0.5) color = '#f59e0b';
 
     const radius = 20;
     const circumference = 2 * Math.PI * radius;
-    const dashOffset = circumference * (1 - (score || 0));
+    const dashOffset = circumference * (1 - normalized);
 
     return (
         <span

@@ -114,15 +114,12 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Neo4j — neomodel requires credentials embedded in the bolt URL
-_neo4j_user = os.getenv('NEO4J_USER', 'neo4j')
-_neo4j_pass = os.getenv('NEO4J_PASSWORD', 'ishat@123')
-_neo4j_host = os.getenv('NEO4J_HOST', 'localhost')
-_neo4j_port = os.getenv('NEO4J_PORT', '7687')
+# Neo4j Aura — neomodel requires credentials embedded in the bolt URL
 NEOMODEL_NEO4J_BOLT_URL = os.getenv(
     'NEO4J_URI',
-    f'bolt://{_neo4j_user}:{_neo4j_pass}@{_neo4j_host}:{_neo4j_port}'
+    f'neo4j+s://{os.getenv("NEO4J_USERNAME", "269dc5fe")}:{os.getenv("NEO4J_PASSWORD", "")}@269dc5fe.databases.neo4j.io'
 )
+
 # Explicitly set neomodel's connection URL (it doesn't auto-read Django settings)
 from neomodel import config as _neomodel_config
 _neomodel_config.DATABASE_URL = NEOMODEL_NEO4J_BOLT_URL

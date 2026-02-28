@@ -57,6 +57,7 @@ class UserProfileView(APIView):
     GET  /api/profile/<user_id>/
     Output: UserProfileResponse
     Calls:  Nothing
+    Any authenticated user can view any profile (public info).
     """
     permission_classes = [IsAuthenticated]
 
@@ -65,9 +66,6 @@ class UserProfileView(APIView):
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if not _authorized_for_user(request, user):
-            return Response({'detail': 'Forbidden.'}, status=status.HTTP_403_FORBIDDEN)
 
         UserProfile.objects.get_or_create(user=user)
         return Response(_build_profile_payload(user), status=status.HTTP_200_OK)

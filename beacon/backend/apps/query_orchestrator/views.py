@@ -40,7 +40,7 @@ class SubmitQueryView(APIView):
 class QueryStatusView(APIView):
     """
     GET /api/query/<query_id>/status/
-    Output: QueryStatusResponse
+    Output: QueryStatusResponse — includes full resolution data.
     """
     def get(self, request, query_id):
         try:
@@ -51,13 +51,28 @@ class QueryStatusView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Build contributing seniors from assignments
+        contributing_seniors = []
+        if query.status == 'RESOLVED':
+            for a in query.assignments.filter(status='RESPONDED'):
+                contributing_seniors.append({
+                    'senior_id': str(a.senior_id),
+                    'trust_score': float(a.trust_score_at_response or 0),
+                    'weight': float(a.similarity_score or 0),
+                })
+
+        conflict = query.conflicts.first()
         result = {
             'query_id': str(query.id),
+            'content': query.content,
             'status': query.status,
+            'is_resolved': query.is_resolved or query.status == 'RESOLVED',
             'provisional_answer': query.rag_response or None,
             'final_answer': query.final_response or None,
             'follow_up_questions': query.follow_up_questions,
-            'conflict_detected': query.conflicts.exists()
+            'conflict_detected': query.conflicts.exists(),
+            'conflict_details': conflict.new_advice if conflict else None,
+            'contributing_seniors': contributing_seniors,
         }
 
         serializer = QueryStatusResponseSerializer(result)
@@ -152,3 +167,42 @@ class SeniorPendingQueriesView(APIView):
 
         serializer = QuerySubmitResponseSerializer(results, many=True)
         return Response(serializer.data)
+
+
+class StudentQueriesView(APIView):
+    """
+    GET /api/query/student/<student_id>/
+    Returns all queries for a student with full resolution data.
+    """
+    def get(self, request, student_id):
+        queries = Query.objects.filter(student_id=student_id).order_by('-timestamp')
+
+        results = []
+        for q in queries:
+            # Build contributing seniors
+            contributing_seniors = []
+            if q.status == 'RESOLVED':
+                for a in q.assignments.filter(status='RESPONDED'):
+                    contributing_seniors.append({
+                        'senior_id': str(a.senior_id),
+                        'trust_score': float(a.trust_score_at_response or 0),
+                        'weight': float(a.similarity_score or 0),
+                    })
+
+            conflict = q.conflicts.first()
+            results.append({
+                'query_id': str(q.id),
+                'content': q.content,
+                'status': q.status,
+                'is_resolved': q.is_resolved or q.status == 'RESOLVED',
+                'provisional_answer': q.rag_response or '',
+                'final_answer': q.final_response or None,
+                'follow_up_questions': q.follow_up_questions,
+                'matched_seniors': q.matched_seniors,
+                'conflict_detected': q.conflicts.exists(),
+                'conflict_details': conflict.new_advice if conflict else None,
+                'contributing_seniors': contributing_seniors,
+                'timestamp': q.timestamp.isoformat(),
+            })
+
+        return Response(results)

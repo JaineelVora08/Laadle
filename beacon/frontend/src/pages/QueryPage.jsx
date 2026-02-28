@@ -1,28 +1,26 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { useQueryStore } from '../store/queryStore';
 import { getUserDomains } from '../api/domains';
-import { submitQuery, getQueryStatus } from '../api/query';
+import { submitQuery, getQueryStatus, getStudentQueries } from '../api/query';
 import DomainBadge from '../components/DomainBadge';
 import QueryCard from '../components/QueryCard';
 import EffectsLayout from '../components/EffectsLayout';
 
 export default function QueryPage() {
     const userId = useAuthStore((s) => s.userId);
-    const activeQuery = useQueryStore((s) => s.activeQuery);
-    const addQuery = useQueryStore((s) => s.addQuery);
-    const resolveQuery = useQueryStore((s) => s.resolveQuery);
-    const setActiveQuery = useQueryStore((s) => s.setActiveQuery);
 
     const [content, setContent] = useState('');
     const [selectedDomain, setSelectedDomain] = useState(null);
     const [userDomains, setUserDomains] = useState([]);
     const [loading, setLoading] = useState(false);
     const [polling, setPolling] = useState(false);
+    const [pollingQueryId, setPollingQueryId] = useState(null);
     const [timeoutMsg, setTimeoutMsg] = useState('');
+    const [queries, setQueries] = useState([]);
     const intervalRef = useRef(null);
     const startTimeRef = useRef(null);
 
+    // Load domains
     useEffect(() => {
         if (!userId) return;
         getUserDomains(userId)
@@ -30,12 +28,22 @@ export default function QueryPage() {
             .catch(() => { });
     }, [userId]);
 
+    // Load student queries from backend (persisted)
+    useEffect(() => {
+        if (!userId) return;
+        getStudentQueries(userId)
+            .then((data) => setQueries(Array.isArray(data) ? data : []))
+            .catch(() => { });
+    }, [userId]);
+
+    // Cleanup interval
     useEffect(() => {
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, []);
 
     const startPolling = (queryId) => {
         setPolling(true);
+        setPollingQueryId(queryId);
         setTimeoutMsg('');
         startTimeRef.current = Date.now();
         intervalRef.current = setInterval(async () => {
@@ -44,14 +52,23 @@ export default function QueryPage() {
                 if (statusData.status === 'RESOLVED' || statusData.final_answer) {
                     clearInterval(intervalRef.current);
                     intervalRef.current = null;
-                    resolveQuery(queryId, statusData);
+                    // Update the query in our list
+                    setQueries((prev) =>
+                        prev.map((q) =>
+                            q.query_id === queryId
+                                ? { ...q, ...statusData, is_resolved: true }
+                                : q
+                        )
+                    );
                     setPolling(false);
+                    setPollingQueryId(null);
                 }
             } catch { /* keep polling */ }
             if (Date.now() - startTimeRef.current > 5 * 60 * 1000) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
                 setPolling(false);
+                setPollingQueryId(null);
                 setTimeoutMsg('Still waiting for senior response. We\'ll notify you.');
             }
         }, 10000);
@@ -67,7 +84,8 @@ export default function QueryPage() {
                 domain_id: selectedDomain.domain_id,
                 content: content.trim(),
             });
-            addQuery({ ...response, content: content.trim() });
+            const newQuery = { ...response, content: content.trim() };
+            setQueries((prev) => [newQuery, ...prev]);
             setContent('');
             startPolling(response.query_id);
         } catch { /* silently fail */ } finally { setLoading(false); }
@@ -122,11 +140,13 @@ export default function QueryPage() {
             )}
             {timeoutMsg && <p className="msg-error" style={{ marginBottom: 16 }}>{timeoutMsg}</p>}
 
-            {/* Active query */}
-            {activeQuery && (
+            {/* All queries */}
+            {queries.length > 0 && (
                 <div className="fx-reveal">
-                    <h3 className="fx-section-title">Your Query</h3>
-                    <QueryCard query={activeQuery} />
+                    <h3 className="fx-section-title">Your Queries ({queries.length})</h3>
+                    {queries.map((q) => (
+                        <QueryCard key={q.query_id} query={q} />
+                    ))}
                 </div>
             )}
         </EffectsLayout>
