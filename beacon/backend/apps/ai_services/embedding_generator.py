@@ -9,7 +9,7 @@ _model = None
 def _load_model():
     global _model
     if _model is None:
-        _model = SentenceTransformer('intfloat/e5-small-v2')
+        _model = SentenceTransformer('intfloat/e5-base-v2')
     return _model
 
 

@@ -22,24 +22,26 @@ class MentorMatchingEngine:
 
         try:
             domain = DomainNode.nodes.get(uid=str(domain_id))
-            seniors = domain.experienced_in.all()
+            seniors = UserNode.nodes.filter(role='SENIOR')
 
             for senior_node in seniors:
-                if senior_node.role != 'SENIOR':
+                if not senior_node.experienced_in.is_connected(domain):
                     continue
                 if not senior_node.availability:
                     continue
                 if (senior_node.active_load or 0) >= max_load:
                     continue
 
+                rel = senior_node.experienced_in.relationship(domain)
                 mentors.append({
                     'senior_id': senior_node.uid,
                     'name': senior_node.name,
                     'trust_score': float(senior_node.trust_score or 0.0),
                     'domain': domain.name,
-                    'experience_level': 'intermediate',
+                    'experience_level': getattr(rel, 'experience_level', 'intermediate') or 'intermediate',
                     'availability': bool(senior_node.availability),
                     'active_load': int(senior_node.active_load or 0),
+                    'years_of_involvement': int(getattr(rel, 'years_of_involvement', 0) or 0),
                 })
         except Exception:
             seniors_qs = User.objects.filter(role='SENIOR', availability=True).order_by('-trust_score', 'active_load')
@@ -54,6 +56,7 @@ class MentorMatchingEngine:
                     'experience_level': senior.current_level or 'intermediate',
                     'availability': bool(senior.availability),
                     'active_load': int(senior.active_load or 0),
+                    'years_of_involvement': 0,
                 })
 
         mentors.sort(key=lambda m: (m['trust_score'], -m['active_load']), reverse=True)

@@ -17,6 +17,7 @@ class MentorMatchResponseSerializer(serializers.Serializer):
     experience_level = serializers.CharField()
     availability = serializers.BooleanField()
     active_load = serializers.IntegerField()
+    years_of_involvement = serializers.IntegerField(required=False, default=0)
 
 
 class PeerMatchResponseSerializer(serializers.Serializer):

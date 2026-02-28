@@ -5,6 +5,8 @@ from apps.ai_services.llm_synthesizer import LLMSynthesizer
 from apps.ai_services.conflict_consensus_engine import ConflictConsensusEngine
 from apps.query_orchestrator.models import Query, SeniorQueryAssignment
 from apps.mentor_matching_service.matching_engine import MentorMatchingEngine
+from apps.domain_management_service.graph_models import UserNode
+from apps.auth_service.models import User
 
 
 class QueryOrchestrator:
@@ -57,7 +59,13 @@ class QueryOrchestrator:
 
         # Step 5: Find top-K matched seniors via mentor matching engine
         matched = self.matching_engine.find_mentors(student_id, domain_id, priority=1, top_k=5)
-        matched_senior_ids = [m['senior_id'] for m in matched]
+        matched_senior_ids = [str(m['senior_id']) for m in matched]
+
+        connected_senior_ids = self._get_connected_seniors_for_domain(student_id, domain_id)
+        all_senior_ids = []
+        for senior_id in matched_senior_ids + connected_senior_ids:
+            if senior_id not in all_senior_ids:
+                all_senior_ids.append(senior_id)
 
         # Step 6: Save Query to PostgreSQL
         query = Query.objects.create(
@@ -67,7 +75,7 @@ class QueryOrchestrator:
             status='PENDING',
             rag_response=provisional_answer,
             follow_up_questions=followups,
-            matched_seniors=[str(sid) for sid in matched_senior_ids]
+            matched_seniors=all_senior_ids
         )
 
         # Step 7: Store query embedding in Pinecone for future RAG
@@ -82,8 +90,8 @@ class QueryOrchestrator:
         )
 
         # Step 8: Create senior assignments (dispatch to inboxes)
-        for senior_id in matched_senior_ids:
-            SeniorQueryAssignment.objects.create(
+        for senior_id in all_senior_ids:
+            SeniorQueryAssignment.objects.get_or_create(
                 query=query,
                 senior_id=senior_id
             )
@@ -93,9 +101,26 @@ class QueryOrchestrator:
             'status': query.status,
             'provisional_answer': provisional_answer,
             'follow_up_questions': followups,
-            'matched_seniors': [str(sid) for sid in matched_senior_ids],
+            'matched_seniors': all_senior_ids,
             'timestamp': query.timestamp.isoformat()
         }
+
+    @staticmethod
+    def _get_connected_seniors_for_domain(student_id: str, domain_id: str) -> list[str]:
+        connected = []
+        try:
+            student_node = UserNode.nodes.get(uid=str(student_id))
+            for senior_node in student_node.mentored_by.all():
+                if senior_node.role != 'SENIOR':
+                    continue
+                if senior_node.uid in connected:
+                    continue
+                if not User.objects.filter(id=senior_node.uid, role='SENIOR').exists():
+                    continue
+                connected.append(str(senior_node.uid))
+        except Exception:
+            return []
+        return connected
 
     def handle_senior_response(self, senior_id: str, query_id: str,
                                 advice_content: str) -> dict:
