@@ -4,8 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import TrustScoreBadge from './TrustScoreBadge';
 
 /**
- * ProfileCard — renders user profile info with trust score, achievements, and message button.
- * Props: { user: UserProfileResponse }
+ * ProfileCard — dark glass card with profile info.
  */
 export default function ProfileCard({ user }) {
     const currentUser = useAuthStore((s) => s.user);
@@ -29,68 +28,51 @@ export default function ProfileCard({ user }) {
     };
 
     return (
-        <div
-            style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: 24,
-                background: '#fff',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                marginBottom: 16,
-            }}
-        >
+        <div className="glass-card-static" style={{ padding: 24, marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                    <h2 style={{ margin: 0 }}>{user.name}</h2>
-                    <span
-                        style={{
-                            display: 'inline-block',
-                            padding: '2px 10px',
-                            borderRadius: 9999,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: '#fff',
-                            backgroundColor: user.role === 'SENIOR' ? '#8b5cf6' : '#3b82f6',
-                            marginTop: 4,
-                        }}
-                    >
+                    <h2 style={{ margin: 0, color: 'var(--text-heading)' }}>{user.name}</h2>
+                    <span className="badge badge-role" style={{ marginTop: 4 }}>
                         {user.role}
                     </span>
                     {user.current_level && (
-                        <p style={{ margin: '6px 0 0', color: '#6b7280', fontSize: 14 }}>{user.current_level}</p>
+                        <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>{user.current_level}</p>
                     )}
                 </div>
                 <TrustScoreBadge score={user.trust_score} />
             </div>
 
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                    style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        backgroundColor: user.availability ? '#22c55e' : '#ef4444',
-                        display: 'inline-block',
-                    }}
-                />
-                <span style={{ fontSize: 14, color: '#374151' }}>
+                <span className={`status-dot ${user.availability ? 'online' : 'offline'}`} />
+                <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
                     {user.availability ? 'Available' : 'Unavailable'}
                 </span>
             </div>
 
             {user.achievements && user.achievements.length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                    <h4 style={{ margin: '0 0 8px' }}>Achievements</h4>
-                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    <h4 style={{ margin: '0 0 8px', color: 'var(--text-primary)' }}>Achievements</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {user.achievements
                             .filter((a) => a.verified)
                             .map((a) => (
-                                <li key={a.id} style={{ fontSize: 14, marginBottom: 4 }}>
-                                    {a.title}{' '}
-                                    <span style={{ color: '#22c55e', fontSize: 12 }}>✓ Verified</span>
-                                </li>
+                                <div
+                                    key={a.id}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px 12px',
+                                        background: 'var(--bg-card)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--border-subtle)',
+                                    }}
+                                >
+                                    <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{a.title}</span>
+                                    <span style={{ color: 'var(--success)', fontSize: 12 }}>✓ Verified</span>
+                                </div>
                             ))}
-                    </ul>
+                    </div>
                 </div>
             )}
 
@@ -99,15 +81,8 @@ export default function ProfileCard({ user }) {
                     <button
                         onClick={handleMessage}
                         disabled={!!msgStatus}
-                        style={{
-                            padding: '8px 20px',
-                            borderRadius: 8,
-                            border: 'none',
-                            background: msgStatus ? '#d1d5db' : '#3b82f6',
-                            color: msgStatus ? '#6b7280' : '#fff',
-                            cursor: msgStatus ? 'default' : 'pointer',
-                            fontSize: 14,
-                        }}
+                        className={msgStatus ? 'btn-ghost' : 'btn-primary'}
+                        style={msgStatus ? { opacity: 0.6, cursor: 'default' } : {}}
                     >
                         {msgStatus || 'Message'}
                     </button>

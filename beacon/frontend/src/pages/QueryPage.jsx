@@ -5,10 +5,8 @@ import { getUserDomains } from '../api/domains';
 import { submitQuery, getQueryStatus } from '../api/query';
 import DomainBadge from '../components/DomainBadge';
 import QueryCard from '../components/QueryCard';
+import EffectsLayout from '../components/EffectsLayout';
 
-/**
- * QueryPage — submit queries, see provisional answer, poll for final response.
- */
 export default function QueryPage() {
     const userId = useAuthStore((s) => s.userId);
     const activeQuery = useQueryStore((s) => s.activeQuery);
@@ -32,18 +30,14 @@ export default function QueryPage() {
             .catch(() => { });
     }, [userId]);
 
-    // Cleanup polling on unmount
     useEffect(() => {
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-        };
+        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, []);
 
     const startPolling = (queryId) => {
         setPolling(true);
         setTimeoutMsg('');
         startTimeRef.current = Date.now();
-
         intervalRef.current = setInterval(async () => {
             try {
                 const statusData = await getQueryStatus(queryId);
@@ -53,11 +47,7 @@ export default function QueryPage() {
                     resolveQuery(queryId, statusData);
                     setPolling(false);
                 }
-            } catch {
-                // keep polling
-            }
-
-            // 5 minute timeout
+            } catch { /* keep polling */ }
             if (Date.now() - startTimeRef.current > 5 * 60 * 1000) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
@@ -70,7 +60,6 @@ export default function QueryPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!content.trim() || !selectedDomain || !userId) return;
-
         setLoading(true);
         try {
             const response = await submitQuery({
@@ -78,105 +67,68 @@ export default function QueryPage() {
                 domain_id: selectedDomain.domain_id,
                 content: content.trim(),
             });
-            const queryWithContent = { ...response, content: content.trim() };
-            addQuery(queryWithContent);
+            addQuery({ ...response, content: content.trim() });
             setContent('');
             startPolling(response.query_id);
-        } catch {
-            // silently fail
-        } finally {
-            setLoading(false);
-        }
+        } catch { /* silently fail */ } finally { setLoading(false); }
     };
 
     return (
-        <div style={{ maxWidth: 800, margin: '2rem auto', padding: '0 16px' }}>
-            <h2>Ask a Question ❓</h2>
-            <p style={{ color: '#6b7280' }}>
-                Select a domain, type your question, and get an AI provisional answer while a senior reviews it.
-            </p>
-
+        <EffectsLayout
+            title="Ask a Question ❓"
+            tagline="Select a domain, type your question, and get an AI provisional answer while a senior reviews it."
+        >
             {/* Domain selector */}
-            <div style={{ marginBottom: 16 }}>
-                <p style={{ fontWeight: 600, marginBottom: 8 }}>Select domain:</p>
+            <div className="fx-glass fx-reveal">
+                <h3 className="fx-section-title">Select domain</h3>
                 {userDomains.length === 0 ? (
-                    <p style={{ color: '#9ca3af', fontSize: 14 }}>
-                        Add domains from your dashboard to ask questions.
-                    </p>
+                    <p style={{ color: '#666', fontSize: 14 }}>Add domains from your dashboard to ask questions.</p>
                 ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {userDomains.map((d) => (
-                            <DomainBadge
-                                key={d.domain_id}
-                                domain={d}
-                                onClick={() => setSelectedDomain(d)}
-                            />
+                            <DomainBadge key={d.domain_id} domain={d} onClick={() => setSelectedDomain(d)} />
                         ))}
                     </div>
                 )}
                 {selectedDomain && (
-                    <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
-                        Selected: <strong>{selectedDomain.name || selectedDomain.domain_name}</strong>
+                    <p style={{ fontSize: 13, color: '#999', marginTop: 8 }}>
+                        Selected: <strong style={{ color: '#00b4d8' }}>{selectedDomain.name || selectedDomain.domain_name}</strong>
                     </p>
                 )}
             </div>
 
             {/* Query form */}
-            <form onSubmit={handleSubmit}>
-                <textarea
-                    placeholder="Type your question here..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={5}
-                    style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: 10,
-                        border: '1px solid #d1d5db',
-                        fontSize: 14,
-                        resize: 'vertical',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box',
-                    }}
-                />
-                <button
-                    type="submit"
-                    disabled={loading || !content.trim() || !selectedDomain}
-                    style={{
-                        marginTop: 8,
-                        padding: '10px 24px',
-                        borderRadius: 8,
-                        border: 'none',
-                        background:
-                            loading || !content.trim() || !selectedDomain ? '#d1d5db' : '#3b82f6',
-                        color: '#fff',
-                        cursor:
-                            loading || !content.trim() || !selectedDomain ? 'default' : 'pointer',
-                        fontSize: 14,
-                        fontWeight: 600,
-                    }}
-                >
-                    {loading ? 'Submitting...' : 'Submit Question'}
-                </button>
-            </form>
+            <div className="fx-glass fx-reveal">
+                <form onSubmit={handleSubmit}>
+                    <textarea
+                        placeholder="Type your question here..."
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        rows={5}
+                        className="dark-input"
+                        style={{ marginBottom: 12 }}
+                    />
+                    <button type="submit" disabled={loading || !content.trim() || !selectedDomain} className="btn-primary">
+                        {loading ? 'Submitting...' : 'Submit Question'}
+                    </button>
+                </form>
+            </div>
 
-            {/* Polling indicator */}
+            {/* Polling */}
             {polling && (
-                <p style={{ marginTop: 12, color: '#6b7280', fontSize: 13 }}>
-                    ⏳ Waiting for senior response... (polling every 10s)
-                </p>
+                <div className="fx-glass" style={{ textAlign: 'center' }}>
+                    <p style={{ color: '#999', fontSize: 13, margin: 0 }}>⏳ Waiting for senior response... (polling every 10s)</p>
+                </div>
             )}
-            {timeoutMsg && (
-                <p style={{ marginTop: 12, color: '#f59e0b', fontSize: 13 }}>{timeoutMsg}</p>
-            )}
+            {timeoutMsg && <p className="msg-error" style={{ marginBottom: 16 }}>{timeoutMsg}</p>}
 
             {/* Active query */}
             {activeQuery && (
-                <div style={{ marginTop: 24 }}>
-                    <h3>Your Query</h3>
+                <div className="fx-reveal">
+                    <h3 className="fx-section-title">Your Query</h3>
                     <QueryCard query={activeQuery} />
                 </div>
             )}
-        </div>
+        </EffectsLayout>
     );
 }

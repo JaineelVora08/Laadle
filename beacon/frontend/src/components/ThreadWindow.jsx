@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 /**
- * ThreadWindow — scrollable message list with input for sending messages.
- * Props: { thread, userId, onSend }
+ * ThreadWindow — dark theme chat window with glass styling.
  */
 export default function ThreadWindow({ thread, userId, onSend }) {
     const [input, setInput] = useState('');
@@ -39,10 +38,10 @@ export default function ThreadWindow({ thread, userId, onSend }) {
                 flexDirection: 'column',
                 height: '100%',
                 minHeight: 400,
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-lg)',
                 overflow: 'hidden',
-                background: '#f9fafb',
+                background: 'var(--bg-card)',
             }}
         >
             {/* Messages area */}
@@ -70,11 +69,14 @@ export default function ThreadWindow({ thread, userId, onSend }) {
                                 style={{
                                     padding: '8px 14px',
                                     borderRadius: 16,
-                                    background: isMine ? '#3b82f6' : '#e5e7eb',
-                                    color: isMine ? '#fff' : '#1f2937',
+                                    background: isMine
+                                        ? 'linear-gradient(135deg, #00b4d8, #0096b7)'
+                                        : 'rgba(255,255,255,0.06)',
+                                    color: isMine ? '#fff' : 'var(--text-primary)',
                                     fontSize: 14,
                                     lineHeight: 1.5,
                                     wordBreak: 'break-word',
+                                    border: isMine ? 'none' : '1px solid var(--border-subtle)',
                                 }}
                             >
                                 {msg.content}
@@ -83,7 +85,7 @@ export default function ThreadWindow({ thread, userId, onSend }) {
                                 style={{
                                     margin: '2px 4px 0',
                                     fontSize: 11,
-                                    color: '#9ca3af',
+                                    color: 'var(--text-muted)',
                                     textAlign: isMine ? 'right' : 'left',
                                 }}
                             >
@@ -101,8 +103,8 @@ export default function ThreadWindow({ thread, userId, onSend }) {
                     display: 'flex',
                     gap: 8,
                     padding: 12,
-                    borderTop: '1px solid #e5e7eb',
-                    background: '#fff',
+                    borderTop: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-secondary)',
                 }}
             >
                 <input
@@ -111,28 +113,14 @@ export default function ThreadWindow({ thread, userId, onSend }) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    style={{
-                        flex: 1,
-                        padding: '8px 14px',
-                        borderRadius: 8,
-                        border: '1px solid #d1d5db',
-                        outline: 'none',
-                        fontSize: 14,
-                    }}
+                    className="dark-input"
+                    style={{ flex: 1 }}
                 />
                 <button
                     onClick={handleSend}
                     disabled={!input.trim()}
-                    style={{
-                        padding: '8px 20px',
-                        borderRadius: 8,
-                        border: 'none',
-                        background: input.trim() ? '#3b82f6' : '#d1d5db',
-                        color: '#fff',
-                        cursor: input.trim() ? 'pointer' : 'default',
-                        fontSize: 14,
-                        fontWeight: 500,
-                    }}
+                    className="btn-primary"
+                    style={{ padding: '8px 20px' }}
                 >
                     Send
                 </button>

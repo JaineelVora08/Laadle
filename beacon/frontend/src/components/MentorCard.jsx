@@ -5,8 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import TrustScoreBadge from './TrustScoreBadge';
 
 /**
- * MentorCard — shows a matched senior's info with connect/view buttons.
- * Props: { mentor, domainId }
+ * MentorCard — dark glass card with mentor info and connect button.
  */
 export default function MentorCard({ mentor, domainId }) {
     const navigate = useNavigate();
@@ -27,34 +26,18 @@ export default function MentorCard({ mentor, domainId }) {
     };
 
     return (
-        <div
-            style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: 20,
-                marginBottom: 12,
-                background: '#fff',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            }}
-        >
+        <div className="glass-card" style={{ padding: 20, marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h3 style={{ margin: 0, fontSize: 18 }}>{mentor.name}</h3>
-                    <p style={{ margin: '4px 0', color: '#6b7280', fontSize: 14 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, color: 'var(--text-heading)' }}>{mentor.name}</h3>
+                    <p style={{ margin: '4px 0', color: 'var(--text-secondary)', fontSize: 14 }}>
                         {mentor.experience_level} • {mentor.years_of_involvement} year{mentor.years_of_involvement !== 1 ? 's' : ''} involvement
                     </p>
-                    <p style={{ margin: '4px 0', fontSize: 14 }}>
-                        <span
-                            style={{
-                                display: 'inline-block',
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                backgroundColor: mentor.availability ? '#22c55e' : '#ef4444',
-                                marginRight: 6,
-                            }}
-                        />
-                        {mentor.availability ? 'Available' : 'Unavailable'}
+                    <p style={{ margin: '4px 0', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className={`status-dot ${mentor.availability ? 'online' : 'offline'}`} />
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                            {mentor.availability ? 'Available' : 'Unavailable'}
+                        </span>
                     </p>
                 </div>
                 <TrustScoreBadge score={mentor.trust_score} />
@@ -62,29 +45,15 @@ export default function MentorCard({ mentor, domainId }) {
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <button
                     onClick={() => navigate(`/profile/${mentor.senior_id}`)}
-                    style={{
-                        padding: '6px 16px',
-                        borderRadius: 8,
-                        border: '1px solid #d1d5db',
-                        background: '#fff',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                    }}
+                    className="btn-ghost"
                 >
                     View Profile
                 </button>
                 <button
                     onClick={handleConnect}
                     disabled={!!status}
-                    style={{
-                        padding: '6px 16px',
-                        borderRadius: 8,
-                        border: 'none',
-                        background: status ? '#d1d5db' : '#3b82f6',
-                        color: status ? '#6b7280' : '#fff',
-                        cursor: status ? 'default' : 'pointer',
-                        fontSize: 13,
-                    }}
+                    className={status ? 'btn-ghost' : 'btn-primary'}
+                    style={status ? { opacity: 0.6, cursor: 'default' } : {}}
                 >
                     {status || 'Connect'}
                 </button>

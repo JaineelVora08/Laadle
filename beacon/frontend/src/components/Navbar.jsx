@@ -3,8 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 /**
- * Navbar — role-based navigation links with logout.
- * Reads auth state directly from store.
+ * Navbar — dark glassmorphism navbar with role-based links.
  */
 export default function Navbar({ user }) {
     const logout = useAuthStore((state) => state.logout);
@@ -15,25 +14,18 @@ export default function Navbar({ user }) {
         navigate('/login');
     };
 
-    const linkStyle = {
-        color: '#d1d5db',
-        textDecoration: 'none',
-        padding: '4px 10px',
-        borderRadius: 6,
-        fontSize: 14,
-        transition: 'color 0.15s',
-    };
-
     return (
         <nav
             style={{
                 display: 'flex',
                 gap: 12,
-                padding: '10px 24px',
-                background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
+                padding: '12px 28px',
+                background: 'rgba(10, 10, 10, 0.85)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
                 color: '#fff',
                 alignItems: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100,
@@ -46,43 +38,65 @@ export default function Navbar({ user }) {
                     textDecoration: 'none',
                     fontWeight: 800,
                     fontSize: 18,
-                    letterSpacing: 1,
-                    marginRight: 8,
+                    letterSpacing: 2,
+                    marginRight: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
                 }}
             >
-                🔆 BEACON
+                <span
+                    style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: '#00b4d8',
+                        boxShadow: '0 0 8px rgba(0,180,216,0.5)',
+                        display: 'inline-block',
+                    }}
+                />
+                BEACON
             </Link>
 
             {user ? (
                 <>
-                    {/* Role-based links */}
                     {user.role === 'STUDENT' ? (
                         <>
-                            <Link to="/dashboard/student" style={linkStyle}>Dashboard</Link>
-                            <Link to="/mentor-match" style={linkStyle}>Find Mentor</Link>
-                            <Link to="/query" style={linkStyle}>Ask Query</Link>
-                            <Link to="/messages" style={linkStyle}>Messages</Link>
+                            <NavLink to="/dashboard/student">Dashboard</NavLink>
+                            <NavLink to="/mentor-match">Find Mentor</NavLink>
+                            <NavLink to="/query">Ask Query</NavLink>
+                            <NavLink to="/messages">Messages</NavLink>
                         </>
                     ) : (
                         <>
-                            <Link to="/dashboard/senior" style={linkStyle}>Dashboard</Link>
-                            <Link to="/inbox" style={linkStyle}>Inbox</Link>
-                            <Link to="/messages" style={linkStyle}>Messages</Link>
+                            <NavLink to="/dashboard/senior">Dashboard</NavLink>
+                            <NavLink to="/inbox">Inbox</NavLink>
+                            <NavLink to="/messages">Messages</NavLink>
                         </>
                     )}
 
-                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Link to="/profile" style={{ ...linkStyle, color: '#a5b4fc' }}>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <Link
+                            to="/profile"
+                            style={{
+                                color: '#ccc',
+                                textDecoration: 'none',
+                                fontSize: 14,
+                                fontWeight: 500,
+                                transition: 'color 0.2s',
+                            }}
+                        >
                             {user.name}
                         </Link>
                         <span
                             style={{
-                                padding: '2px 8px',
+                                padding: '3px 10px',
                                 borderRadius: 9999,
                                 fontSize: 11,
                                 fontWeight: 700,
-                                background: user.role === 'SENIOR' ? '#8b5cf6' : '#3b82f6',
-                                color: '#fff',
+                                background: 'rgba(0, 180, 216, 0.12)',
+                                color: '#00b4d8',
+                                border: '1px solid rgba(0, 180, 216, 0.2)',
                             }}
                         >
                             {user.role}
@@ -90,13 +104,22 @@ export default function Navbar({ user }) {
                         <button
                             onClick={handleLogout}
                             style={{
-                                padding: '4px 14px',
-                                borderRadius: 6,
-                                border: '1px solid rgba(255,255,255,0.3)',
+                                padding: '5px 16px',
+                                borderRadius: 8,
+                                border: '1px solid rgba(255,255,255,0.1)',
                                 background: 'transparent',
-                                color: '#e5e7eb',
+                                color: '#999',
                                 cursor: 'pointer',
                                 fontSize: 13,
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.borderColor = 'rgba(239,68,68,0.4)';
+                                e.target.style.color = '#ef4444';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                                e.target.style.color = '#999';
                             }}
                         >
                             Logout
@@ -105,10 +128,37 @@ export default function Navbar({ user }) {
                 </>
             ) : (
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    <Link to="/login" style={linkStyle}>Login</Link>
-                    <Link to="/register" style={linkStyle}>Register</Link>
+                    <NavLink to="/login">Login</NavLink>
+                    <NavLink to="/register">Register</NavLink>
                 </div>
             )}
         </nav>
+    );
+}
+
+function NavLink({ to, children }) {
+    return (
+        <Link
+            to={to}
+            style={{
+                color: '#999',
+                textDecoration: 'none',
+                padding: '5px 12px',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 500,
+                transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+                e.target.style.color = '#00b4d8';
+                e.target.style.background = 'rgba(0,180,216,0.06)';
+            }}
+            onMouseLeave={(e) => {
+                e.target.style.color = '#999';
+                e.target.style.background = 'transparent';
+            }}
+        >
+            {children}
+        </Link>
     );
 }
