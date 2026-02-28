@@ -18,7 +18,7 @@ class DomainLinkResponseSerializer(serializers.Serializer):
     type = serializers.CharField()
     priority = serializers.IntegerField()
     current_level = serializers.CharField()
-    embedding_ref = serializers.CharField(required=False, default='')
+    embedding_ref = serializers.CharField(required=False, default='', allow_blank=True)
     popularity_score = serializers.FloatField(required=False, default=0.0)
 
 
