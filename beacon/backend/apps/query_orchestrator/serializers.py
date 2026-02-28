@@ -4,7 +4,7 @@ from rest_framework import serializers
 class QuerySubmitRequestSerializer(serializers.Serializer):
     """Validates QuerySubmitRequest."""
     student_id = serializers.UUIDField()
-    domain_id = serializers.UUIDField()
+    domain_id = serializers.CharField()
     content = serializers.CharField()
 
 
@@ -57,6 +57,10 @@ class FinalAdviceResponseSerializer(serializers.Serializer):
     final_answer = serializers.CharField()
     agreements = serializers.ListField(child=serializers.CharField())
     disagreements = serializers.ListField(child=serializers.CharField())
+    majority_label = serializers.CharField(allow_null=True, required=False)
+    opinion_groups = serializers.ListField(required=False, default=[])
+    anomaly_detected = serializers.BooleanField(required=False, default=False)
+    anomaly_warning = serializers.CharField(allow_null=True, required=False)
     conflict_detected = serializers.BooleanField()
     conflict_details = serializers.CharField(allow_null=True)
     contributing_seniors = ContributingSeniorSerializer(many=True)

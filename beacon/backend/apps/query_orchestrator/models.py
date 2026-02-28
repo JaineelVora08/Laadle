@@ -17,7 +17,7 @@ class Query(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='queries'
     )
-    domain_id = models.UUIDField()
+    domain_id = models.CharField(max_length=64)
     content = models.TextField()
     embedding_vector_id = models.CharField(max_length=255, blank=True, default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')

@@ -103,6 +103,93 @@ You MUST respond in EXACTLY this JSON format:
                 'disagreements': []
             }
 
+    def categorize_advice(self, student_query: str, advice_list: list) -> dict:
+        """
+        Groups senior advice into opinion clusters using LLM.
+        advice_list items: { senior_id, content, trust_score }
+        Returns: {
+            'groups': [{'label': str, 'senior_ids': [str], 'avg_trust': float}],
+            'majority_group': {'label': str, 'senior_ids': [str], 'avg_trust': float},
+            'minority_groups': [{'label': str, 'senior_ids': [str], 'avg_trust': float}]
+        }
+        """
+        if not advice_list:
+            return {'groups': [], 'majority_group': None, 'minority_groups': []}
+
+        if len(advice_list) == 1:
+            group = {
+                'label': 'Single response',
+                'senior_ids': [advice_list[0]['senior_id']],
+                'avg_trust': advice_list[0].get('trust_score', 0.5),
+            }
+            return {'groups': [group], 'majority_group': group, 'minority_groups': []}
+
+        # Build advisor text for prompt
+        advisor_text = ""
+        id_map = {}
+        for i, a in enumerate(advice_list, 1):
+            advisor_text += f"\nAdvisor {i} (ID: {a['senior_id']}):\n{a['content']}\n"
+            id_map[a['senior_id']] = a
+
+        prompt = f"""You are an advice categorizer. Multiple mentors responded to a student question.
+Group their advice into opinion clusters — advisors who give essentially the same recommendation
+belong in the same group.
+
+STUDENT QUESTION: {student_query}
+
+ADVISOR RESPONSES:
+{advisor_text}
+
+Instructions:
+- Group advisors whose core recommendation is the same (even if worded differently)
+- Give each group a short descriptive label
+- Every advisor ID must appear in exactly one group
+
+You MUST respond in EXACTLY this JSON format:
+{{"groups": [{{"label": "short description", "senior_ids": ["id1", "id2"]}}]}}"""
+
+        try:
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                    max_output_tokens=400,
+                )
+            )
+            result = json.loads(response.text)
+            groups = result.get('groups', [])
+        except Exception as e:
+            print(f"[LLMSynthesizer] categorize_advice error: {e}")
+            # Fallback: all in one group
+            group = {
+                'label': 'All responses',
+                'senior_ids': [a['senior_id'] for a in advice_list],
+                'avg_trust': sum(a.get('trust_score', 0.5) for a in advice_list) / len(advice_list),
+            }
+            return {'groups': [group], 'majority_group': group, 'minority_groups': []}
+
+        # Enrich groups with avg_trust
+        for g in groups:
+            trust_scores = [
+                id_map[sid].get('trust_score', 0.5)
+                for sid in g['senior_ids']
+                if sid in id_map
+            ]
+            g['avg_trust'] = sum(trust_scores) / len(trust_scores) if trust_scores else 0.0
+
+        # Determine majority: largest group, ties broken by highest avg_trust
+        groups.sort(key=lambda g: (len(g['senior_ids']), g['avg_trust']), reverse=True)
+        majority_group = groups[0] if groups else None
+        minority_groups = groups[1:] if len(groups) > 1 else []
+
+        return {
+            'groups': groups,
+            'majority_group': majority_group,
+            'minority_groups': minority_groups,
+        }
+
     def generate_followup_questions(self, query_content: str, domain_id: str, historical_followups: list = None) -> list:
         """
         Generates predictive follow-up questions the student might ask next.

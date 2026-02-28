@@ -2,17 +2,16 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 
 /**
- * ProvisionalAnswerBox — AI first-look answer with disclaimer and follow-up questions.
- * Props: { answer, disclaimer, followups }
+ * ProvisionalAnswerBox — dark theme AI answer card.
  */
 export default function ProvisionalAnswerBox({ answer, disclaimer, followups }) {
     if (answer === null || answer === undefined) {
         return (
             <div
                 style={{
-                    background: '#fef3c7',
-                    border: '1px solid #f59e0b',
-                    borderRadius: 12,
+                    background: 'var(--warning-dim)',
+                    border: '1px solid rgba(245,158,11,0.2)',
+                    borderRadius: 'var(--radius-md)',
                     padding: 20,
                     marginTop: 12,
                     textAlign: 'center',
@@ -22,14 +21,14 @@ export default function ProvisionalAnswerBox({ answer, disclaimer, followups }) 
                     style={{
                         width: 24,
                         height: 24,
-                        border: '3px solid #f59e0b',
+                        border: '3px solid var(--warning)',
                         borderTop: '3px solid transparent',
                         borderRadius: '50%',
                         animation: 'spin 1s linear infinite',
                         margin: '0 auto 8px',
                     }}
                 />
-                <p style={{ margin: 0, color: '#92400e', fontWeight: 500 }}>
+                <p style={{ margin: 0, color: 'var(--warning)', fontWeight: 500 }}>
                     Generating AI provisional answer...
                 </p>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -40,32 +39,32 @@ export default function ProvisionalAnswerBox({ answer, disclaimer, followups }) 
     return (
         <div
             style={{
-                background: '#fef3c7',
-                border: '1px solid #f59e0b',
-                borderRadius: 12,
+                background: 'var(--warning-dim)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                borderRadius: 'var(--radius-md)',
                 padding: 20,
                 marginTop: 12,
             }}
         >
-            <h4 style={{ margin: '0 0 8px', color: '#92400e', fontSize: 15 }}>
+            <h4 style={{ margin: '0 0 8px', color: 'var(--warning)', fontSize: 15 }}>
                 🤖 AI First-Look Answer
             </h4>
-            <div style={{ margin: '0 0 8px', color: '#1f2937', lineHeight: 1.7, fontSize: 14 }}>
+            <div style={{ margin: '0 0 8px', color: 'var(--text-primary)', lineHeight: 1.7, fontSize: 14 }}>
                 <ReactMarkdown>{answer}</ReactMarkdown>
             </div>
             {disclaimer && (
-                <p style={{ margin: '0 0 12px', color: '#92400e', fontSize: 12, fontStyle: 'italic' }}>
+                <p style={{ margin: '0 0 12px', color: 'var(--text-muted)', fontSize: 12, fontStyle: 'italic' }}>
                     {disclaimer}
                 </p>
             )}
             {followups && followups.length > 0 && (
-                <div style={{ borderTop: '1px solid #fbbf24', paddingTop: 12 }}>
-                    <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 13, color: '#92400e' }}>
+                <div style={{ borderTop: '1px solid rgba(245,158,11,0.15)', paddingTop: 12 }}>
+                    <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 13, color: 'var(--warning)' }}>
                         You might also want to ask:
                     </p>
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                         {followups.map((q, i) => (
-                            <li key={i} style={{ fontSize: 13, color: '#78350f', marginBottom: 4 }}>
+                            <li key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
                                 {q}
                             </li>
                         ))}

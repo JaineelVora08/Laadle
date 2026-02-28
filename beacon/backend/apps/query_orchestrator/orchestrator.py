@@ -55,8 +55,8 @@ class QueryOrchestrator:
             content, domain_id, historical_followups=historical_followups
         )
 
-        # Step 5: Find matched seniors via mentor matching engine
-        matched = self.matching_engine.find_mentors(student_id, domain_id, priority=1)
+        # Step 5: Find top-K matched seniors via mentor matching engine
+        matched = self.matching_engine.find_mentors(student_id, domain_id, priority=1, top_k=5)
         matched_senior_ids = [m['senior_id'] for m in matched]
 
         # Step 6: Save Query to PostgreSQL
@@ -144,50 +144,32 @@ class QueryOrchestrator:
             'predicted_faqs': predicted_faqs
         }
 
+    # Minimum total responses required before minority penalization kicks in.
+    # If only 2 seniors responded, a 1-vs-1 split is too thin to penalize.
+    MIN_RESPONSES_FOR_PENALTY = 3
+
     def handle_senior_faq_response(self, senior_id: str, query_id: str,
                                     faq_answers: list) -> dict:
         """
         Step 2 of Senior Response Flow:
         1. Record FAQ answers
-        2. Run conflict detection
-        3. Synthesize all responses
-        4. Update query as resolved
-        5. Store main Q&A AND each FAQ in Pinecone
-        6. Update trust score
+        2. Categorize advice into opinion groups (LLM)
+        3. Determine majority / minority
+        4. Penalize minority trust, boost majority trust
+        5. Check majority advice against historical RAG for anomalies
+        6. Synthesize all responses
+        7. Update query as resolved
+        8. Store main Q&A AND each FAQ in Pinecone
+        Returns enriched response with ranked_advice, majority_label, anomaly_warning
         """
         query = Query.objects.get(id=query_id)
         assignment = SeniorQueryAssignment.objects.get(query=query, senior_id=senior_id)
-        
+
         # 1. Record FAQ answers
-        # faq_answers format: [{"question": "...", "answer": "..."}]
         assignment.answered_followups = faq_answers
         assignment.save()
 
-        # 2. Conflict detection (against other seniors' main advice)
-        other_responses = SeniorQueryAssignment.objects.filter(
-            query=query, status='RESPONDED'
-        ).exclude(senior_id=senior_id)
-
-        historical_advice = [r.advice_content for r in other_responses if r.advice_content]
-        conflict_detected = False
-        conflict_details = None
-
-        if historical_advice:
-            conflict_detected = self.conflict_engine.detect_anomaly(
-                assignment.advice_content, historical_advice
-            )
-            if conflict_detected:
-                conflict_record = self.conflict_engine.flag_conflict(
-                    query_id=str(query.id),
-                    new_advice=assignment.advice_content,
-                    conflicting_advice=historical_advice[0]
-                )
-                conflict_details = (
-                    f"Conflict detected between senior {senior_id}'s advice and "
-                    f"previous responses. Record ID: {conflict_record['id']}"
-                )
-
-        # 3. Gather ALL responses and synthesize
+        # 2. Gather ALL responses
         all_responses = SeniorQueryAssignment.objects.filter(
             query=query, status='RESPONDED'
         )
@@ -196,21 +178,100 @@ class QueryOrchestrator:
             {
                 'content': r.advice_content,
                 'senior_id': str(r.senior_id),
-                'trust_score': r.trust_score_at_response,
-                'similarity_score': r.similarity_score or 0.5
+                'trust_score': r.trust_score_at_response or 0.5,
+                'similarity_score': r.similarity_score or 0.5,
             }
             for r in all_responses
         ]
 
+        # 3. LLM categorization into opinion groups
+        categorization = self.synthesizer.categorize_advice(query.content, advice_list)
+        majority_group = categorization.get('majority_group')
+        minority_groups = categorization.get('minority_groups', [])
+
+        # 4. Trust penalization / boost
+        total_responses = len(advice_list)
+        majority_count = len(majority_group['senior_ids']) if majority_group else 0
+
+        from apps.trust_score_service.calculator import TrustScoreCalculator
+        trust_calc = TrustScoreCalculator()
+
+        # Boost majority seniors
+        if majority_group:
+            for sid in majority_group['senior_ids']:
+                try:
+                    trust_calc.update_feedback(sid, {
+                        'is_majority': True,
+                        'M': majority_count,
+                        'm': majority_count,
+                        'N': total_responses,
+                    })
+                except Exception:
+                    pass
+
+        # Penalize minority seniors — but ONLY if enough responses to be meaningful
+        if total_responses >= self.MIN_RESPONSES_FOR_PENALTY:
+            for mg in minority_groups:
+                minority_count = len(mg['senior_ids'])
+                for sid in mg['senior_ids']:
+                    try:
+                        trust_calc.update_feedback(sid, {
+                            'is_majority': False,
+                            'M': majority_count,
+                            'm': minority_count,
+                            'N': total_responses,
+                        })
+                    except Exception:
+                        pass
+
+        # 5. RAG-based historical anomaly detection
+        anomaly_detected = False
+        anomaly_warning = None
+
+        if majority_group:
+            # Get the actual advice content for the majority
+            majority_advice_texts = [
+                a['content'] for a in advice_list
+                if a['senior_id'] in majority_group['senior_ids']
+            ]
+            majority_combined = ' '.join(majority_advice_texts)
+
+            # Retrieve historical answers to similar questions from RAG
+            query_embedding = self.embedding_gen.generate_query_embedding(query.content)
+            similar_cases = self.rag_engine.retrieve_similar_cases(
+                query_embedding, query.domain_id
+            )
+            historical_advice_texts = [
+                c['advice_text'] for c in similar_cases
+                if c.get('advice_text') and c.get('type') == 'resolved_qa'
+            ]
+
+            if historical_advice_texts:
+                anomaly_detected = self.conflict_engine.detect_anomaly(
+                    majority_combined, historical_advice_texts
+                )
+                if anomaly_detected:
+                    conflict_record = self.conflict_engine.flag_conflict(
+                        query_id=str(query.id),
+                        new_advice=majority_combined,
+                        conflicting_advice=historical_advice_texts[0],
+                    )
+                    anomaly_warning = (
+                        f"The majority advice differs significantly from historical answers "
+                        f"to similar questions. This has been flagged for review "
+                        f"(Record ID: {conflict_record['id']})."
+                    )
+
+        # 6. Synthesize all responses (existing LLM synthesis)
         synthesis = self.synthesizer.synthesize(query.content, advice_list)
 
-        # 4. Update query as resolved
+        # 7. Update query as resolved
         query.final_response = synthesis['final_answer']
         query.is_resolved = True
         query.status = 'RESOLVED'
         query.save()
 
-        # 5. Store main Q&A in Pinecone
+        # 8. Store main Q&A in Pinecone
         qa_embedding = self.embedding_gen.generate(
             f"Q: {query.content}\nA: {synthesis['final_answer']}"
         )
@@ -223,11 +284,11 @@ class QueryOrchestrator:
                 'advice_text': synthesis['final_answer'],
                 'senior_id': str(senior_id),
                 'trust_score': assignment.trust_score_at_response,
-                'type': 'resolved_qa'
+                'type': 'resolved_qa',
             }
         )
 
-        # 5b. Store each FAQ in Pinecone for future Quick-Reply
+        # 8b. Store each FAQ in Pinecone for future Quick-Reply
         for i, faq in enumerate(faq_answers):
             faq_embedding = self.embedding_gen.generate(faq['question'])
             self.embedding_gen.store(
@@ -240,21 +301,9 @@ class QueryOrchestrator:
                     'senior_id': str(senior_id),
                     'trust_score': assignment.trust_score_at_response,
                     'type': 'resolved_followup',
-                    'parent_query_id': str(query.id)
+                    'parent_query_id': str(query.id),
                 }
             )
-
-        # 6. Update trust score
-        try:
-            from apps.trust_score_service.calculator import TrustScoreCalculator
-            trust_calc = TrustScoreCalculator()
-            trust_calc.update_feedback(str(senior_id), {
-                'query_id': str(query.id),
-                'responded': True,
-                'follow_through': len(faq_answers) > 0
-            })
-        except Exception:
-            pass
 
         # Build contributing_seniors list
         contributing_seniors = []
@@ -275,8 +324,12 @@ class QueryOrchestrator:
             'final_answer': synthesis['final_answer'],
             'agreements': synthesis.get('agreements', []),
             'disagreements': synthesis.get('disagreements', []),
-            'conflict_detected': conflict_detected,
-            'conflict_details': conflict_details,
+            'majority_label': majority_group['label'] if majority_group else None,
+            'opinion_groups': categorization['groups'],
+            'anomaly_detected': anomaly_detected,
+            'anomaly_warning': anomaly_warning,
+            'conflict_detected': anomaly_detected,
+            'conflict_details': anomaly_warning,
             'contributing_seniors': contributing_seniors,
         }
 
