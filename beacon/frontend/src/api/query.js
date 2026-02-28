@@ -1,7 +1,24 @@
 /**
  * Calls Module 3 query orchestrator endpoints.
  */
-export const submitQuery = async (payload) => { /* POST /api/query/submit/ */ };
-export const getQueryStatus = async (queryId) => { /* GET /api/query/<id>/status/ */ };
-export const submitSeniorResponse = async (queryId, payload) => { /* POST /api/query/<id>/senior-response/ */ };
-export const getSeniorPending = async (seniorId) => { /* GET /api/query/pending/senior/<id>/ */ };
+import axiosInstance from './axiosInstance';
+
+export const submitQuery = async (payload) => {
+    const response = await axiosInstance.post('/api/query/submit/', payload);
+    return response.data;
+};
+
+export const getQueryStatus = async (queryId) => {
+    const response = await axiosInstance.get(`/api/query/${queryId}/status/`);
+    return response.data;
+};
+
+export const submitSeniorResponse = async (queryId, payload) => {
+    const response = await axiosInstance.post(`/api/query/${queryId}/senior-response/`, payload);
+    return response.data;
+};
+
+export const getSeniorPendingQueries = async (seniorId) => {
+    const response = await axiosInstance.get(`/api/query/pending/senior/${seniorId}/`);
+    return response.data;
+};
