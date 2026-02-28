@@ -1,7 +1,24 @@
 /**
  * Calls Module 1 user profile endpoints.
  */
-export const getProfile = async (userId) => { /* GET /api/profile/<userId>/ */ };
-export const updateProfile = async (userId, payload) => { /* PUT /api/profile/<userId>/update/ */ };
-export const addAchievement = async (userId, payload) => { /* POST /api/profile/<userId>/achievements/ */ };
-export const getAchievements = async (userId) => { /* GET /api/profile/<userId>/achievements/ */ };
+import axiosInstance from './axiosInstance';
+
+export const getProfile = async (userId) => {
+	const response = await axiosInstance.get(`/api/profile/${userId}/`);
+	return response.data;
+};
+
+export const updateProfile = async (userId, payload) => {
+	const response = await axiosInstance.patch(`/api/profile/${userId}/update/`, payload);
+	return response.data;
+};
+
+export const addAchievement = async (userId, payload) => {
+	const response = await axiosInstance.post(`/api/profile/${userId}/achievements/`, payload);
+	return response.data;
+};
+
+export const getAchievements = async (userId) => {
+	const response = await axiosInstance.get(`/api/profile/${userId}/achievements/`);
+	return response.data;
+};

@@ -9,3 +9,5 @@ openai>=1.0,<2.0
 celery>=5.3,<6.0
 redis>=5.0,<6.0
 python-dotenv>=1.0,<2.0
+google-auth>=2.30,<3.0
+requests>=2.31,<3.0
