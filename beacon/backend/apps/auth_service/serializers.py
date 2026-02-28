@@ -125,31 +125,23 @@ class GoogleLoginSerializer(serializers.Serializer):
     def create(self, validated_data):
         email = validated_data['google_email']
         name = validated_data['google_name']
-        requested_role = validated_data.get('role', 'STUDENT')
-        current_level = validated_data.get('current_level', '')
 
-        with transaction.atomic():
-            try:
-                user = User.objects.get(email=email)
-                created = False
-            except User.DoesNotExist:
-                user = User(
-                    email=email,
-                    name=name,
-                    role=requested_role,
-                    current_level=current_level,
-                )
-                user.set_unusable_password()
-                user.save()
-                created = True
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                'No account found for this email. Please register first.'
+            )
 
-            if not user.name:
-                user.name = name
-                user.save(update_fields=['name'])
+        # Backfill name if missing (e.g. registered via email without name)
+        if not user.name and name:
+            user.name = name
+            user.save(update_fields=['name'])
 
-            if user.role == 'STUDENT':
-                Student.objects.get_or_create(user=user)
-            else:
-                Senior.objects.get_or_create(user=user)
+        # Ensure role-specific profile exists
+        if user.role == 'STUDENT':
+            Student.objects.get_or_create(user=user)
+        else:
+            Senior.objects.get_or_create(user=user)
 
         return user

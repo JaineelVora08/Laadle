@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import ProvisionalAnswerBox from './ProvisionalAnswerBox';
 import ConflictAlert from './ConflictAlert';
 
@@ -63,9 +64,9 @@ export default function QueryCard({ query }) {
                         <h4 style={{ margin: '0 0 6px', color: '#166534', fontSize: 15 }}>
                             ✅ Final Answer
                         </h4>
-                        <p style={{ margin: 0, color: '#1f2937', lineHeight: 1.6 }}>
-                            {query.final_answer}
-                        </p>
+                        <div style={{ margin: 0, color: '#1f2937', lineHeight: 1.7, fontSize: 14 }}>
+                            <ReactMarkdown>{query.final_answer}</ReactMarkdown>
+                        </div>
                     </div>
 
                     <ConflictAlert

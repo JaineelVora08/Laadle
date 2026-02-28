@@ -116,7 +116,7 @@ export default function QueryPage() {
                 )}
                 {selectedDomain && (
                     <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
-                        Selected: <strong>{selectedDomain.domain_name}</strong>
+                        Selected: <strong>{selectedDomain.name || selectedDomain.domain_name}</strong>
                     </p>
                 )}
             </div>

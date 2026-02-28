@@ -36,7 +36,7 @@ export default function DomainBadge({ domain, onClick }) {
                 margin: '4px 4px',
             }}
         >
-            {domain?.domain_name || 'Unknown'}
+            {domain?.name || domain?.domain_name || 'Unknown'}
         </span>
     );
 }

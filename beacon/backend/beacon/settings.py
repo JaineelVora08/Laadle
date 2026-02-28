@@ -113,10 +113,18 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Neo4j
-NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
-NEOMODEL_NEO4J_USERNAME = os.getenv('NEO4J_USER', 'neo4j')
-NEOMODEL_NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD', 'ishat@123')
+# Neo4j — neomodel requires credentials embedded in the bolt URL
+_neo4j_user = os.getenv('NEO4J_USER', 'neo4j')
+_neo4j_pass = os.getenv('NEO4J_PASSWORD', 'ishat@123')
+_neo4j_host = os.getenv('NEO4J_HOST', 'localhost')
+_neo4j_port = os.getenv('NEO4J_PORT', '7687')
+NEOMODEL_NEO4J_BOLT_URL = os.getenv(
+    'NEO4J_URI',
+    f'bolt://{_neo4j_user}:{_neo4j_pass}@{_neo4j_host}:{_neo4j_port}'
+)
+# Explicitly set neomodel's connection URL (it doesn't auto-read Django settings)
+from neomodel import config as _neomodel_config
+_neomodel_config.DATABASE_URL = NEOMODEL_NEO4J_BOLT_URL
 
 # Pinecone
 PINECONE_API_KEY = os.getenv('PINECONE_API_KEY', 'pcsk_3YD3KU_8embZDpEKdCUiLdPXNspijX5r5gGXVsagT3jBJo8xRjNgUM8j9pAUMZ9mKuMyJV')

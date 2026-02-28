@@ -21,6 +21,10 @@ export default function LoginPage() {
         if (!data) {
             return fallbackMessage;
         }
+        // DRF ValidationError from create() returns a plain array
+        if (Array.isArray(data) && typeof data[0] === 'string') {
+            return data[0];
+        }
         if (typeof data.detail === 'string') {
             return data.detail;
         }
@@ -47,7 +51,13 @@ export default function LoginPage() {
                 const data = await googleLogin({ id_token: response.credential });
                 navigate(data.role === 'SENIOR' ? '/dashboard/senior' : '/dashboard/student');
             } catch (err) {
-                setError(getErrorMessage(err, 'Google login failed'));
+                const msg = getErrorMessage(err, 'Google login failed');
+                if (msg.toLowerCase().includes('register')) {
+                    setError('No account found. Redirecting to registration...');
+                    setTimeout(() => navigate('/register'), 1500);
+                } else {
+                    setError(msg);
+                }
             } finally {
                 setLoading(false);
             }

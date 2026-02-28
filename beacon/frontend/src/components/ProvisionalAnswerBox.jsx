@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 
 /**
  * ProvisionalAnswerBox — AI first-look answer with disclaimer and follow-up questions.
@@ -49,7 +50,9 @@ export default function ProvisionalAnswerBox({ answer, disclaimer, followups }) 
             <h4 style={{ margin: '0 0 8px', color: '#92400e', fontSize: 15 }}>
                 🤖 AI First-Look Answer
             </h4>
-            <p style={{ margin: '0 0 8px', color: '#1f2937', lineHeight: 1.6 }}>{answer}</p>
+            <div style={{ margin: '0 0 8px', color: '#1f2937', lineHeight: 1.7, fontSize: 14 }}>
+                <ReactMarkdown>{answer}</ReactMarkdown>
+            </div>
             {disclaimer && (
                 <p style={{ margin: '0 0 12px', color: '#92400e', fontSize: 12, fontStyle: 'italic' }}>
                     {disclaimer}
