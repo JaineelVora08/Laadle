@@ -142,8 +142,9 @@ class SeniorPendingQueriesView(APIView):
             q = assignment.query
             results.append({
                 'query_id': str(q.id),
+                'content': q.content,
                 'status': q.status,
-                'provisional_answer': '',  # Senior doesn't see AI provisional answer
+                'provisional_answer': q.rag_response or '',
                 'follow_up_questions': q.follow_up_questions,
                 'matched_seniors': q.matched_seniors,
                 'timestamp': q.timestamp.isoformat()

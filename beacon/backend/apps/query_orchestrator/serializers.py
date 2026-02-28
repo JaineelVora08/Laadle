@@ -11,6 +11,7 @@ class QuerySubmitRequestSerializer(serializers.Serializer):
 class QuerySubmitResponseSerializer(serializers.Serializer):
     """Serializes QuerySubmitResponse."""
     query_id = serializers.UUIDField()
+    content = serializers.CharField(required=False, allow_blank=True, default='')
     status = serializers.CharField()
     provisional_answer = serializers.CharField(allow_blank=True)
     follow_up_questions = serializers.ListField(child=serializers.CharField())

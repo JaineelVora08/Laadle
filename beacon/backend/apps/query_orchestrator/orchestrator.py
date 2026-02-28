@@ -256,13 +256,28 @@ class QueryOrchestrator:
         except Exception:
             pass
 
+        # Build contributing_seniors list
+        contributing_seniors = []
+        for r in all_responses:
+            weight = next(
+                (a.get('weight', 0.0) for a in synthesis.get('contributing_seniors', [])
+                 if str(a.get('senior_id')) == str(r.senior_id)),
+                0.0,
+            )
+            contributing_seniors.append({
+                'senior_id': str(r.senior_id),
+                'trust_score': float(r.trust_score_at_response or 0),
+                'weight': float(weight),
+            })
+
         return {
             'query_id': str(query.id),
             'final_answer': synthesis['final_answer'],
-            'agreements': synthesis['agreements'],
-            'disagreements': synthesis['disagreements'],
+            'agreements': synthesis.get('agreements', []),
+            'disagreements': synthesis.get('disagreements', []),
             'conflict_detected': conflict_detected,
-            'conflict_details': conflict_details
+            'conflict_details': conflict_details,
+            'contributing_seniors': contributing_seniors,
         }
 
     def handle_followup_question(self, query_id: str, followup_text: str) -> dict:
