@@ -34,9 +34,9 @@ export default function MentorMatchPage() {
             const result = await findMentors({
                 student_id: userId,
                 domain_id: domain.domain_id,
-                priority: 'trust_score',
+                priority: 1,
             });
-            setMentors(result?.matched_seniors || []);
+            setMentors(Array.isArray(result) ? result : (result?.matched_seniors || []));
         } catch {
             setMentors([]);
         } finally {
@@ -75,7 +75,7 @@ export default function MentorMatchPage() {
             {selectedDomain && (
                 <div>
                     <h3 style={{ marginBottom: 12 }}>
-                        Mentors for "{selectedDomain.domain_name}"
+                        Mentors for "{selectedDomain.name || selectedDomain.domain_name}"
                     </h3>
                     {loading ? (
                         <p style={{ color: '#9ca3af' }}>Searching for mentors...</p>
