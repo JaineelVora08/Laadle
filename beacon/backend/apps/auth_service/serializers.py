@@ -129,18 +129,19 @@ class GoogleLoginSerializer(serializers.Serializer):
         current_level = validated_data.get('current_level', '')
 
         with transaction.atomic():
-            user, created = User.objects.get_or_create(
-                email=email,
-                defaults={
-                    'name': name,
-                    'role': requested_role,
-                    'current_level': current_level,
-                },
-            )
-
-            if created:
+            try:
+                user = User.objects.get(email=email)
+                created = False
+            except User.DoesNotExist:
+                user = User(
+                    email=email,
+                    name=name,
+                    role=requested_role,
+                    current_level=current_level,
+                )
                 user.set_unusable_password()
-                user.save(update_fields=['password'])
+                user.save()
+                created = True
 
             if not user.name:
                 user.name = name

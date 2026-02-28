@@ -114,7 +114,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Neo4j
-NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_URI', 'bolt://neo4j:7687')
+NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
 NEOMODEL_NEO4J_USERNAME = os.getenv('NEO4J_USER', 'neo4j')
 NEOMODEL_NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD', 'ishat@123')
 
@@ -132,7 +132,9 @@ CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 
 # Internal Service Auth
 INTERNAL_SECRET = os.getenv('INTERNAL_SECRET', 'internal_shared_secret')
-GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
+GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '735972244009-9l7etrnnfi44pk37jaevdl393ckaf1d9.apps.googleusercontent.com')
+VITE_GOOGLE_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '735972244009-9l7etrnnfi44pk37jaevdl393ckaf1d9.apps.googleusercontent.com')
+
 GOOGLE_OAUTH_CLIENT_IDS = [
     client_id.strip()
     for client_id in os.getenv('GOOGLE_OAUTH_CLIENT_IDS', GOOGLE_OAUTH_CLIENT_ID).split(',')
