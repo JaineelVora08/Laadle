@@ -1,8 +1,7 @@
 import React from 'react';
 
 /**
- * ConflictAlert — shows red alert when conflicting senior advice is detected.
- * Props: { detected: bool, details: string | null }
+ * ConflictAlert — dark theme red alert card.
  */
 export default function ConflictAlert({ detected, details }) {
     if (!detected) return null;
@@ -10,20 +9,20 @@ export default function ConflictAlert({ detected, details }) {
     return (
         <div
             style={{
-                background: '#fef2f2',
-                border: '1px solid #ef4444',
-                borderRadius: 12,
+                background: 'var(--error-dim)',
+                border: '1px solid rgba(239,68,68,0.2)',
+                borderRadius: 'var(--radius-md)',
                 padding: 16,
                 marginTop: 12,
             }}
         >
-            <h4 style={{ margin: '0 0 6px', color: '#b91c1c', fontSize: 15 }}>
+            <h4 style={{ margin: '0 0 6px', color: 'var(--error)', fontSize: 15 }}>
                 ⚠️ Conflict Detected in Senior Advice
             </h4>
             {details && (
-                <p style={{ margin: '0 0 8px', color: '#1f2937', fontSize: 14 }}>{details}</p>
+                <p style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontSize: 14 }}>{details}</p>
             )}
-            <p style={{ margin: 0, color: '#6b7280', fontSize: 12, fontStyle: 'italic' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12, fontStyle: 'italic' }}>
                 We've shown you both perspectives in the final answer.
             </p>
         </div>
