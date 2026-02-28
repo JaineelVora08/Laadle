@@ -123,8 +123,8 @@ PINECONE_API_KEY = os.getenv('PINECONE_API_KEY', '')
 PINECONE_ENV = os.getenv('PINECONE_ENV', '')
 PINECONE_INDEX = os.getenv('PINECONE_INDEX', 'beacon-domains')
 
-# OpenAI
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+# Gemini
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 
 # Celery
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
