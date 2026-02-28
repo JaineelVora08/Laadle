@@ -1,6 +1,19 @@
 /**
  * Calls Module 2 domain management endpoints.
  */
-export const addDomain = async (payload) => { /* POST /api/domains/add/ */ };
-export const getUserDomains = async (userId) => { /* GET /api/domains/user/<userId>/ */ };
-export const getAllDomains = async () => { /* GET /api/domains/all/ */ };
+import axiosInstance from './axiosInstance';
+
+export const addDomain = async (payload) => {
+    const response = await axiosInstance.post('/api/domains/add/', payload);
+    return response.data;
+};
+
+export const getUserDomains = async (userId) => {
+    const response = await axiosInstance.get(`/api/domains/user/${userId}/`);
+    return response.data;
+};
+
+export const getAllDomains = async () => {
+    const response = await axiosInstance.get('/api/domains/all/');
+    return response.data;
+};

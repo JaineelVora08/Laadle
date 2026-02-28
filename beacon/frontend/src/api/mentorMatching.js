@@ -1,6 +1,19 @@
 /**
  * Calls Module 2 mentor matching endpoints.
  */
-export const findMentors = async (payload) => { /* POST /api/mentor-matching/find/ */ };
-export const connectMentor = async (payload) => { /* POST /api/mentor-matching/connect/ */ };
-export const findPeers = async (payload) => { /* POST /api/peer-matching/find/ */ };
+import axiosInstance from './axiosInstance';
+
+export const findMentors = async (payload) => {
+    const response = await axiosInstance.post('/api/mentor-matching/find/', payload);
+    return response.data;
+};
+
+export const connectMentor = async (payload) => {
+    const response = await axiosInstance.post('/api/mentor-matching/connect/', payload);
+    return response.data;
+};
+
+export const findPeers = async (payload) => {
+    const response = await axiosInstance.post('/api/peer-matching/find/', payload);
+    return response.data;
+};
