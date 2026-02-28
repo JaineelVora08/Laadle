@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'apps.query_orchestrator',
     'apps.ai_services',
     'apps.adaptive_scheduler_service',
+    'apps.direct_messaging_service',
 ]
 
 MIDDLEWARE = [
