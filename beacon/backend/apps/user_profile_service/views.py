@@ -30,7 +30,7 @@ def _build_profile_payload(user):
         for item in achievements
     ]
 
-    payload = {
+    return {
         'id': user.id,
         'name': user.name,
         'email': user.email,
@@ -46,9 +46,6 @@ def _build_profile_payload(user):
         'follow_through_rate': senior.follow_through_rate if senior else None,
         'achievements': achievement_data,
     }
-    serializer = UserProfileResponseSerializer(data=payload)
-    serializer.is_valid(raise_exception=True)
-    return serializer.validated_data
 
 
 def _is_internal_request(request):
@@ -84,13 +81,13 @@ class UpdateProfileView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def _update(self, request, user_id):
+    def _update(self, request, user_id, skip_auth=False):
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if not _authorized_for_user(request, user):
+        if not skip_auth and not _authorized_for_user(request, user):
             return Response({'detail': 'Forbidden.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = UpdateProfileSerializer(data=request.data, partial=True, context={'role': user.role})
@@ -196,33 +193,7 @@ class InternalProfileView(APIView):
         if not _is_internal_request(request):
             return Response({'detail': 'Unauthorized internal request.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = UpdateProfileSerializer(data=request.data, partial=True, context={'role': user.role})
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        for field in ['name', 'availability', 'current_level']:
-            if field in data:
-                setattr(user, field, data[field])
-        user.save()
-
-        if user.role == 'STUDENT':
-            student, _ = Student.objects.get_or_create(user=user)
-            for field in ['low_energy_mode', 'momentum_score']:
-                if field in data:
-                    setattr(student, field, data[field])
-            student.save()
-
-        if user.role == 'SENIOR':
-            senior, _ = Senior.objects.get_or_create(user=user)
-            for field in ['consistency_score', 'alignment_score', 'follow_through_rate']:
-                if field in data:
-                    setattr(senior, field, data[field])
-            senior.save()
-
-        UserProfile.objects.get_or_create(user=user)
-        return Response(_build_profile_payload(user), status=status.HTTP_200_OK)
+        # Delegate to UpdateProfileView to avoid code duplication
+        update_view = UpdateProfileView()
+        update_view.request = request
+        return update_view._update(request, user_id, skip_auth=True)

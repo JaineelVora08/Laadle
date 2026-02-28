@@ -102,7 +102,7 @@ and a verified senior mentor will review and provide personalized guidance soon.
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
             )
             return response.text

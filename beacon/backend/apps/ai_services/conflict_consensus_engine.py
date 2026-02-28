@@ -9,7 +9,10 @@ class ConflictConsensusEngine:
     Uses embedding cosine similarity to measure deviation.
     Threshold for anomaly: avg_similarity < 0.3
     """
-    ANOMALY_THRESHOLD = 0.3
+    # Threshold calibrated for e5-base-v2 normalized embeddings.
+    # e5-base-v2 produces high baseline similarity (~0.7) even for unrelated
+    # texts, so 0.75 is the right cutoff for anomaly detection.
+    ANOMALY_THRESHOLD = 0.75
 
     def __init__(self):
         self.embedding_gen = EmbeddingGenerator()

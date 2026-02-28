@@ -1,28 +1,16 @@
-import torch
-import torch.nn.functional as F
-from torch import Tensor
-from transformers import AutoTokenizer, AutoModel
+from sentence_transformers import SentenceTransformer
 from django.conf import settings
-
-
-def _average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
-    """Mean-pool token embeddings, ignoring padding tokens."""
-    last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0)
-    return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None]
 
 
 # ── Module-level singleton so the model is loaded only once ──
 _model = None
-_tokenizer = None
 
 
 def _load_model():
-    global _model, _tokenizer
+    global _model
     if _model is None:
-        _tokenizer = AutoTokenizer.from_pretrained('intfloat/e5-base-v2')
-        _model = AutoModel.from_pretrained('intfloat/e5-base-v2')
-        _model.eval()
-    return _tokenizer, _model
+        _model = SentenceTransformer('intfloat/e5-base-v2')
+    return _model
 
 
 class EmbeddingGenerator:
@@ -36,7 +24,7 @@ class EmbeddingGenerator:
     """
 
     def __init__(self):
-        self.tokenizer, self.model = _load_model()
+        self.model = _load_model()
         self._init_pinecone()
 
     def _init_pinecone(self):
@@ -63,21 +51,6 @@ class EmbeddingGenerator:
             except Exception as e:
                 print(f"[EmbeddingGenerator] Pinecone init skipped: {e}")
 
-    @torch.no_grad()
-    def _embed(self, texts: list[str]) -> list[list[float]]:
-        """
-        Core embedding method — runs e5-base-v2 inference.
-        Caller is responsible for adding the 'query: ' or 'passage: ' prefix.
-        Returns: list of L2-normalised embedding vectors (each length 768).
-        """
-        batch_dict = self.tokenizer(
-            texts, max_length=512, padding=True, truncation=True, return_tensors='pt'
-        )
-        outputs = self.model(**batch_dict)
-        embeddings = _average_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
-        embeddings = F.normalize(embeddings, p=2, dim=1)
-        return embeddings.tolist()
-
     # ── Public API ────────────────────────────────────────────
 
     def generate(self, text: str) -> list:
@@ -86,7 +59,10 @@ class EmbeddingGenerator:
         Returns: embedding vector list[float] (length 768)
         """
         try:
-            return self._embed([f"passage: {text}"])[0]
+            embedding = self.model.encode(
+                [f"passage: {text}"], normalize_embeddings=True
+            )
+            return embedding[0].tolist()
         except Exception as e:
             print(f"[EmbeddingGenerator] E5 embed error: {e}")
             return [0.0] * 768
@@ -97,7 +73,10 @@ class EmbeddingGenerator:
         Returns: embedding vector list[float] (length 768)
         """
         try:
-            return self._embed([f"query: {text}"])[0]
+            embedding = self.model.encode(
+                [f"query: {text}"], normalize_embeddings=True
+            )
+            return embedding[0].tolist()
         except Exception as e:
             print(f"[EmbeddingGenerator] E5 query embed error: {e}")
             return [0.0] * 768

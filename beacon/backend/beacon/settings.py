@@ -116,15 +116,15 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Neo4j
 NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_URI', 'bolt://neo4j:7687')
 NEOMODEL_NEO4J_USERNAME = os.getenv('NEO4J_USER', 'neo4j')
-NEOMODEL_NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD', 'testpassword')
+NEOMODEL_NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD', 'ishat@123')
 
 # Pinecone
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY', '')
-PINECONE_ENV = os.getenv('PINECONE_ENV', '')
+PINECONE_API_KEY = os.getenv('PINECONE_API_KEY', 'pcsk_3YD3KU_8embZDpEKdCUiLdPXNspijX5r5gGXVsagT3jBJo8xRjNgUM8j9pAUMZ9mKuMyJV')
+PINECONE_ENV = os.getenv('PINECONE_ENV', 'us-east-1-aws')
 PINECONE_INDEX = os.getenv('PINECONE_INDEX', 'beacon-domains')
 
 # Gemini
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyA0i42_nzqcbk-kXltS3eAUil3iwgVjEcs')
 
 # Celery
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
