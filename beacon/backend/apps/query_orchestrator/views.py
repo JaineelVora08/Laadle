@@ -143,6 +143,7 @@ class SeniorPendingQueriesView(APIView):
             results.append({
                 'query_id': str(q.id),
                 'status': q.status,
+                'content': q.content,
                 'provisional_answer': '',  # Senior doesn't see AI provisional answer
                 'follow_up_questions': q.follow_up_questions,
                 'matched_seniors': q.matched_seniors,

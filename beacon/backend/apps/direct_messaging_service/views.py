@@ -33,12 +33,33 @@ class InitiateChatRequestView(APIView):
 
         student_id = serializer.validated_data['student_id']
         senior_id = serializer.validated_data['senior_id']
-        query_id = serializer.validated_data['query_id']
+        query_id = serializer.validated_data.get('query_id')
 
         # Fetch objects
         student = get_object_or_404(User, id=student_id, role='STUDENT')
         senior = get_object_or_404(User, id=senior_id, role='SENIOR')
-        query = get_object_or_404(Query, id=query_id)
+        query = None
+        if query_id:
+            query = get_object_or_404(Query, id=query_id)
+        else:
+            resolved_queries = Query.objects.filter(student=student).order_by('-timestamp')
+            senior_id_str = str(senior_id)
+            for candidate in resolved_queries:
+                if not (candidate.is_resolved or candidate.status == 'RESOLVED'):
+                    continue
+                matched = [str(s) for s in (candidate.matched_seniors or [])]
+                if senior_id_str in matched:
+                    query = candidate
+                    break
+
+            if query is None:
+                return Response(
+                    {
+                        'error': 'No resolved query found for this student-senior pair. '
+                                 'Provide query_id explicitly after a resolved query.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         # Validate query belongs to this student
         if str(query.student_id) != str(student_id):

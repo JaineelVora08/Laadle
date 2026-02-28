@@ -4,7 +4,7 @@ from rest_framework import serializers
 class QuerySubmitRequestSerializer(serializers.Serializer):
     """Validates QuerySubmitRequest."""
     student_id = serializers.UUIDField()
-    domain_id = serializers.UUIDField()
+    domain_id = serializers.CharField()
     content = serializers.CharField()
 
 
@@ -12,6 +12,7 @@ class QuerySubmitResponseSerializer(serializers.Serializer):
     """Serializes QuerySubmitResponse."""
     query_id = serializers.UUIDField()
     status = serializers.CharField()
+    content = serializers.CharField(required=False, allow_blank=True)
     provisional_answer = serializers.CharField(allow_blank=True)
     follow_up_questions = serializers.ListField(child=serializers.CharField())
     matched_seniors = serializers.ListField(child=serializers.UUIDField())

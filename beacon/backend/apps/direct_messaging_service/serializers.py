@@ -6,7 +6,7 @@ class InitiateChatRequestSerializer(serializers.Serializer):
     """Input: student initiates a DM request to a senior based on a resolved query."""
     student_id = serializers.UUIDField()
     senior_id = serializers.UUIDField()
-    query_id = serializers.UUIDField()
+    query_id = serializers.UUIDField(required=False, allow_null=True)
 
 
 class ChatRequestResponseSerializer(serializers.ModelSerializer):
@@ -14,10 +14,23 @@ class ChatRequestResponseSerializer(serializers.ModelSerializer):
     student_id = serializers.UUIDField(source='student_id', read_only=True)
     senior_id = serializers.UUIDField(source='senior_id', read_only=True)
     query_id = serializers.UUIDField(source='query_id', read_only=True)
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    senior_name = serializers.CharField(source='senior.name', read_only=True)
 
     class Meta:
         model = ChatRequest
-        fields = ['id', 'student_id', 'senior_id', 'query_id', 'intro_message', 'status', 'created_at', 'responded_at']
+        fields = [
+            'id',
+            'student_id',
+            'senior_id',
+            'query_id',
+            'student_name',
+            'senior_name',
+            'intro_message',
+            'status',
+            'created_at',
+            'responded_at',
+        ]
         read_only_fields = fields
 
 

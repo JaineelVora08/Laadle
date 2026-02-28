@@ -48,74 +48,85 @@ class AddDomainView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # ── 2. Ensure UserNode exists in Neo4j ──
-        user_node = self._ensure_user_node(user)
+        # ── 2–6. Neo4j graph operations ──
+        try:
+            user_node = self._ensure_user_node(user)
 
-        # ── 3. Generate embedding via ai_services ──
-        embedding = self._generate_embedding(raw_text)
+            # ── 3. Generate embedding via ai_services ──
+            embedding = self._generate_embedding(raw_text)
 
-        # ── 4. Search for similar existing domains ──
-        domain_node = None
-        if embedding:
-            similar = self._query_similar_domains(embedding)
-            if similar:
-                best_match = similar[0]
-                if best_match['score'] >= SIMILARITY_THRESHOLD:
-                    # Reuse existing domain
-                    try:
-                        domain_node = DomainNode.nodes.get(uid=best_match['metadata'].get('domain_id', ''))
-                        # Increment popularity
-                        domain_node.popularity_score = (domain_node.popularity_score or 0) + 1
-                        domain_node.save()
-                    except DomainNode.DoesNotExist:
-                        domain_node = None
-
-        # ── 5. Create new DomainNode if no match found ──
-        if domain_node is None:
-            domain_node = DomainNode(
-                name=raw_text.strip().title(),
-                type=self._infer_domain_type(raw_text),
-                popularity_score=1.0,
-            ).save()
-
-            # Store embedding in Pinecone
+            # ── 4. Search for similar existing domains ──
+            domain_node = None
             if embedding:
-                self._store_embedding(
-                    vector_id=domain_node.uid,
-                    embedding=embedding,
-                    metadata={
-                        'domain_name': domain_node.name,
-                        'type': domain_node.type,
-                        'domain_id': domain_node.uid,
-                    },
-                )
-                domain_node.embedding_ref = domain_node.uid
-                domain_node.save()
+                similar = self._query_similar_domains(embedding)
+                if similar:
+                    best_match = similar[0]
+                    if best_match['score'] >= SIMILARITY_THRESHOLD:
+                        # Reuse existing domain
+                        try:
+                            domain_node = DomainNode.nodes.get(uid=best_match['metadata'].get('domain_id', ''))
+                            # Increment popularity
+                            domain_node.popularity_score = (domain_node.popularity_score or 0) + 1
+                            domain_node.save()
+                        except DomainNode.DoesNotExist:
+                            domain_node = None
 
-        # ── 6. Create relationship edge based on role ──
-        if user.role == 'STUDENT':
-            if not user_node.interested_in.is_connected(domain_node):
-                user_node.interested_in.connect(
-                    domain_node,
-                    {'priority': priority, 'current_level': current_level},
-                )
-            else:
-                # Update existing relationship properties
-                rel = user_node.interested_in.relationship(domain_node)
-                rel.priority = priority
-                rel.current_level = current_level
-                rel.save()
-        elif user.role == 'SENIOR':
-            if not user_node.experienced_in.is_connected(domain_node):
-                user_node.experienced_in.connect(
-                    domain_node,
-                    {'experience_level': experience_level, 'years_of_involvement': years_of_involvement},
-                )
-            else:
-                rel = user_node.experienced_in.relationship(domain_node)
-                rel.experience_level = experience_level
-                rel.years_of_involvement = years_of_involvement
-                rel.save()
+            # ── 5. Create new DomainNode if no match found ──
+            if domain_node is None:
+                domain_node = DomainNode(
+                    name=raw_text.strip().title(),
+                    type=self._infer_domain_type(raw_text),
+                    popularity_score=1.0,
+                ).save()
+
+                # Store embedding in Pinecone
+                if embedding:
+                    self._store_embedding(
+                        vector_id=domain_node.uid,
+                        embedding=embedding,
+                        metadata={
+                            'domain_name': domain_node.name,
+                            'type': domain_node.type,
+                            'domain_id': domain_node.uid,
+                        },
+                    )
+                    domain_node.embedding_ref = domain_node.uid
+                    domain_node.save()
+
+            # ── 6. Create relationship edge based on role ──
+            if user.role == 'STUDENT':
+                if not user_node.interested_in.is_connected(domain_node):
+                    user_node.interested_in.connect(
+                        domain_node,
+                        {'priority': priority, 'current_level': current_level},
+                    )
+                else:
+                    # Update existing relationship properties
+                    rel = user_node.interested_in.relationship(domain_node)
+                    rel.priority = priority
+                    rel.current_level = current_level
+                    rel.save()
+            elif user.role == 'SENIOR':
+                if not user_node.experienced_in.is_connected(domain_node):
+                    user_node.experienced_in.connect(
+                        domain_node,
+                        {'experience_level': experience_level, 'years_of_involvement': years_of_involvement},
+                    )
+                else:
+                    rel = user_node.experienced_in.relationship(domain_node)
+                    rel.experience_level = experience_level
+                    rel.years_of_involvement = years_of_involvement
+                    rel.save()
+
+        except Exception as neo4j_exc:
+            logger.error('Neo4j operation failed in AddDomainView: %s', neo4j_exc)
+            return Response(
+                {
+                    'detail': 'Graph database is unavailable. Please ensure Neo4j is running and try again.',
+                    'error': str(neo4j_exc),
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         # ── 7. Build and return response ──
         response_data = {
@@ -222,6 +233,9 @@ class UserDomainsView(APIView):
             user_node = UserNode.nodes.get(uid=str(user_id))
         except UserNode.DoesNotExist:
             return Response([], status=status.HTTP_200_OK)
+        except Exception as neo4j_exc:
+            logger.warning('Neo4j unavailable in UserDomainsView.get: %s', neo4j_exc)
+            return Response([], status=status.HTTP_200_OK)
 
         domains = []
         user = User.objects.get(id=user_id)
@@ -263,7 +277,12 @@ class AllDomainsView(APIView):
     """
 
     def get(self, request):
-        all_domains = DomainNode.nodes.all()
+        try:
+            all_domains = DomainNode.nodes.all()
+        except Exception as neo4j_exc:
+            logger.warning('Neo4j unavailable in AllDomainsView.get: %s', neo4j_exc)
+            return Response([], status=status.HTTP_200_OK)
+
         data = [
             {
                 'uid': d.uid,
@@ -309,6 +328,12 @@ class InternalDomainDetailView(APIView):
             return Response(
                 {'detail': 'Domain not found.'},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as neo4j_exc:
+            logger.warning('Neo4j unavailable in InternalDomainDetailView.get: %s', neo4j_exc)
+            return Response(
+                {'detail': 'Graph database unavailable.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         data = {
