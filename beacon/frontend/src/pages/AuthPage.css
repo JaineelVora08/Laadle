@@ -1,0 +1,465 @@
+/* ============================================================
+   AuthPage — Sliding Login / Register
+   Dark black-gray gradient theme · Teal accents · No purple
+   ============================================================ */
+
+/* -------- full-screen background -------- */
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle animated background particles */
+.auth-page::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0, 180, 216, 0.04) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    border-radius: 50%;
+    animation: floatBg 8s ease-in-out infinite alternate;
+}
+
+.auth-page::after {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0, 180, 216, 0.03) 0%, transparent 70%);
+    bottom: -150px;
+    left: -150px;
+    border-radius: 50%;
+    animation: floatBg 10s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes floatBg {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(30px, -20px) scale(1.1);
+    }
+}
+
+/* -------- main container -------- */
+.auth-container {
+    position: relative;
+    width: 850px;
+    max-width: 100%;
+    min-height: 520px;
+    background: #141414;
+    border-radius: 20px;
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* -------- form panels (Register = left, Login = right) -------- */
+.auth-form-container {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 40px;
+    transition: opacity 0.4s ease, transform 0.6s ease;
+}
+
+.auth-form-container.register-form {
+    left: 0;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.auth-form-container.login-form {
+    right: 0;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* When login is active: hide register, show login */
+.auth-container.login-active .register-form {
+    opacity: 0;
+    transform: translateX(-20%);
+    pointer-events: none;
+}
+
+.auth-container.login-active .login-form {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+}
+
+/* When register is active: show register, hide login */
+.auth-container.register-active .register-form {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+}
+
+.auth-container.register-active .login-form {
+    opacity: 0;
+    transform: translateX(20%);
+    pointer-events: none;
+}
+
+/* -------- overlay sliding panel -------- */
+.auth-overlay {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    z-index: 10;
+    transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+/* Overlay sits on the RIGHT by default (register-active: register form on left is visible) */
+.auth-container.register-active .auth-overlay {
+    transform: translateX(100%);
+}
+
+/* Overlay sits on the LEFT when login-active (login form on right is visible) */
+.auth-container.login-active .auth-overlay {
+    transform: translateX(0);
+}
+
+.auth-overlay-inner {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(160deg, #1c1c1c 0%, #0a0a0a 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    position: relative;
+}
+
+/* Teal accent line along the edge */
+.auth-overlay-inner::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    bottom: 10%;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, #00b4d8, transparent);
+}
+
+.auth-container.register-active .auth-overlay-inner::before {
+    left: 0;
+}
+
+.auth-container.login-active .auth-overlay-inner::before {
+    right: 0;
+}
+
+.auth-overlay-inner h2 {
+    color: #f0f0f0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.auth-overlay-inner p {
+    color: #888;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 28px;
+    max-width: 260px;
+}
+
+/* -------- Ghost / outline toggle button -------- */
+.auth-toggle-btn {
+    padding: 12px 36px;
+    border: 2px solid #00b4d8;
+    border-radius: 30px;
+    background: transparent;
+    color: #00b4d8;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.auth-toggle-btn:hover {
+    background: rgba(0, 180, 216, 0.12);
+    box-shadow: 0 0 20px rgba(0, 180, 216, 0.15);
+    transform: translateY(-1px);
+}
+
+/* -------- form styling -------- */
+.auth-form {
+    width: 100%;
+    max-width: 300px;
+}
+
+.auth-form h2 {
+    color: #f0f0f0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.auth-form .auth-subtitle {
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+}
+
+.auth-input-group {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.auth-input-group input,
+.auth-input-group select {
+    width: 100%;
+    padding: 12px 16px;
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.auth-input-group select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+}
+
+.auth-input-group select option {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+.auth-input-group input::placeholder {
+    color: #555;
+}
+
+.auth-input-group input:focus,
+.auth-input-group select:focus {
+    border-color: #00b4d8;
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.1);
+    outline: none;
+}
+
+/* -------- submit button -------- */
+.auth-submit-btn {
+    width: 100%;
+    padding: 13px 0;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #00b4d8 0%, #0096b7 100%);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-submit-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.auth-submit-btn:hover:not(:disabled)::after {
+    opacity: 1;
+}
+
+.auth-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0, 180, 216, 0.25);
+}
+
+.auth-submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.auth-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* -------- divider -------- */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0;
+    color: #555;
+    font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #2a2a2a;
+}
+
+/* -------- Google Sign-in container -------- */
+.auth-google-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-google-container p {
+    color: #666;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+/* -------- error message -------- */
+.auth-error {
+    color: #ef4444;
+    font-size: 0.82rem;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+/* -------- BEACON logo / brand header -------- */
+.auth-brand {
+    position: absolute;
+    top: 20px;
+    left: 28px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-brand-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #00b4d8;
+    box-shadow: 0 0 8px rgba(0, 180, 216, 0.4);
+}
+
+.auth-brand-name {
+    color: #ccc;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* ============================================================
+   Responsive — stack on mobile
+   ============================================================ */
+@media (max-width: 768px) {
+    .auth-container {
+        min-height: auto;
+        border-radius: 16px;
+    }
+
+    .auth-form-container {
+        position: relative;
+        width: 100%;
+        padding: 32px 24px;
+        transition: max-height 0.5s ease, opacity 0.4s ease, padding 0.5s ease;
+        overflow: hidden;
+    }
+
+    .auth-form-container.register-form,
+    .auth-form-container.login-form {
+        transform: none !important;
+    }
+
+    /* Show/hide via max-height + opacity on mobile */
+    .auth-container.login-active .register-form {
+        max-height: 0;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        pointer-events: none;
+    }
+
+    .auth-container.login-active .login-form {
+        max-height: 800px;
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .auth-container.register-active .register-form {
+        max-height: 800px;
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .auth-container.register-active .login-form {
+        max-height: 0;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        pointer-events: none;
+    }
+
+    /* Hide sliding overlay on mobile, show inline toggle */
+    .auth-overlay {
+        display: none;
+    }
+
+    .mobile-toggle {
+        display: block !important;
+    }
+}
+
+/* Mobile toggle (hidden on desktop) */
+.mobile-toggle {
+    display: none;
+    text-align: center;
+    padding: 16px 24px 24px;
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.mobile-toggle a {
+    color: #00b4d8;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.mobile-toggle a:hover {
+    color: #33ccee;
+    text-decoration: none;
+}
