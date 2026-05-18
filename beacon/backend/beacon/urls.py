@@ -19,4 +19,5 @@ urlpatterns = [
     path('api/query/', include('apps.query_orchestrator.urls')),
     path('api/scheduler/', include('apps.adaptive_scheduler_service.urls')),
     path('api/dm/', include('apps.direct_messaging_service.urls')),
+    path('api/analytics/', include('apps.analytics.urls')),
 ]

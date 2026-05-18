@@ -1,6 +1,8 @@
 from google import genai
 from django.conf import settings
+from django.core.cache import cache
 from apps.ai_services.embedding_generator import EmbeddingGenerator
+from apps.core.cache import stable_hash
 
 import logging
 logger = logging.getLogger(__name__)

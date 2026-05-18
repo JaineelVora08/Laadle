@@ -2,6 +2,7 @@ import json
 from google import genai
 from google.genai import types
 from django.conf import settings
+from apps.core.circuit_breaker import CircuitBreaker
 
 
 class LLMSynthesizer:
@@ -225,6 +226,75 @@ You MUST respond in EXACTLY this JSON format:
 
         questions = self._call_followup_llm(fallback_prompt)
         return questions if questions else []
+
+    def generate_provisional_and_followups(self, student_query: str, domain_id: str,
+                                           similar_cases: list = None,
+                                           past_senior_responses: list = None) -> dict:
+        """
+        One Gemini call that returns both the provisional answer and predicted follow-ups.
+        """
+        similar_cases = similar_cases or []
+        past_senior_responses = past_senior_responses or []
+
+        case_text = "\n\n".join(
+            f"Past Case {i}: Q: {case.get('query_text', '')}\nA: {case.get('advice_text', '')}"
+            for i, case in enumerate(similar_cases[:5], 1)
+        ) or "No similar past cases found."
+        senior_text = "\n\n".join(
+            f"Senior Response {i} (trust {item.get('trust_score', 0):.2f}): "
+            f"{item.get('advice_content', '')}"
+            for i, item in enumerate(past_senior_responses[:5], 1)
+        ) or "No previous senior responses found."
+
+        prompt = f"""You are BEACON, an AI mentoring assistant.
+Return one provisional answer and three likely follow-up questions for the student.
+
+STUDENT QUESTION:
+{student_query}
+
+SIMILAR CASES:
+{case_text}
+
+PAST SENIOR RESPONSES:
+{senior_text}
+
+Rules:
+- Keep the answer helpful and specific.
+- Mention that this is provisional and a verified senior will review it.
+- Return valid JSON only.
+
+JSON format:
+{{"answer": "...", "followups": ["q1", "q2", "q3"]}}"""
+
+        def fallback():
+            return {
+                'answer': (
+                    '[Provisional answer unavailable. A senior mentor will provide '
+                    'guidance shortly.]'
+                ),
+                'followups': [],
+            }
+
+        def call_gemini():
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.4,
+                    max_output_tokens=1000,
+                )
+            )
+            result = json.loads(response.text)
+            return {
+                'answer': result.get('answer', ''),
+                'followups': result.get('followups', [])[:3],
+            }
+
+        try:
+            return CircuitBreaker('gemini').call(call_gemini, fallback=fallback)
+        except Exception:
+            return fallback()
 
     def _call_followup_llm(self, prompt: str) -> list:
         """Helper: calls Gemini with a follow-up generation prompt and parses the result."""

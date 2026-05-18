@@ -92,6 +92,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         app_label = 'auth_service'
+        indexes = [
+            models.Index(fields=['user', 'verified']),
+        ]
 
 
 class Student(models.Model):

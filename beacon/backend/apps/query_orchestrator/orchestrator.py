@@ -402,14 +402,16 @@ class QueryOrchestrator:
         assignment.faq_completed = True
         assignment.save(update_fields=['answered_followups', 'faq_completed'])
 
-        # 2. Store each FAQ in Pinecone for future Quick-Reply
-        for i, faq in enumerate(faq_answers):
-            try:
-                faq_embedding = self.embedding_gen.generate(faq.get('question', ''))
-                self.embedding_gen.store(
-                    vector_id=f"{query.id}_faq_{senior_id}_{i}",
-                    embedding=faq_embedding,
-                    metadata={
+        # 2. Store FAQs in Pinecone for future Quick-Reply using batched embeddings/upsert.
+        try:
+            questions = [faq.get('question', '') for faq in faq_answers]
+            embeddings = self.embedding_gen.generate_batch(questions, batch_size=32)
+            vectors = []
+            for i, (faq, faq_embedding) in enumerate(zip(faq_answers, embeddings)):
+                vectors.append((
+                    f"{query.id}_faq_{senior_id}_{i}",
+                    faq_embedding,
+                    {
                         'domain_ids': query.domain_ids,
                         'domain_id': str(query.domain_ids[0]) if query.domain_ids else '',
                         'query_text': faq.get('question', ''),
@@ -418,10 +420,11 @@ class QueryOrchestrator:
                         'trust_score': assignment.trust_score_at_response,
                         'type': 'resolved_followup',
                         'parent_query_id': str(query.id),
-                    }
-                )
-            except Exception as exc:
-                logger.warning('Failed storing FAQ vector for query %s item %s: %s', query.id, i, exc)
+                    },
+                ))
+            self.embedding_gen.store_batch(vectors, batch_size=100)
+        except Exception as exc:
+            logger.warning('Failed storing FAQ vectors for query %s: %s', query.id, exc)
 
         # Update query status to IN_PROGRESS once at least one senior completes
         if query.status == 'PENDING':

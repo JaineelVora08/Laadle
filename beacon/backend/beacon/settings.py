@@ -15,6 +15,7 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '*').split(',') if host.strip()]
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',
     # Local apps
     'apps.auth_service',
     'apps.user_profile_service',
@@ -36,6 +38,8 @@ INSTALLED_APPS = [
     'apps.ai_services',
     'apps.adaptive_scheduler_service',
     'apps.direct_messaging_service',
+    'apps.realtime',
+    'apps.analytics',
 ]
 
 MIDDLEWARE = [
@@ -68,21 +72,18 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'beacon.wsgi.application'
+ASGI_APPLICATION = 'beacon.asgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'beacon_db'),
+        'USER': os.getenv('POSTGRES_USER', 'beacon_user'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'beacon_pass'),
+        'HOST': os.getenv('POSTGRES_HOST', 'pgbouncer'),
+        'PORT': os.getenv('POSTGRES_PORT', '6432'),
+        'CONN_MAX_AGE': 600,
     }
-    # Production (PostgreSQL):
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': os.getenv('POSTGRES_DB', 'beacon_db'),
-    #     'USER': os.getenv('POSTGRES_USER', 'beacon_user'),
-    #     'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'beacon_pass'),
-    #     'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
-    #     'PORT': os.getenv('POSTGRES_PORT', '5432'),
-    # }
 }
 
 AUTH_USER_MODEL = 'auth_service.User'
@@ -94,6 +95,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'apps.core.pagination.TimestampPagination',
+    'PAGE_SIZE': 20,
 }
 
 SIMPLE_JWT = {
@@ -136,6 +139,31 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 # Celery
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+CELERY_TASK_ROUTES = {
+    'apps.query_orchestrator.tasks.step1_embed': {'queue': 'embedding_queue'},
+    'apps.query_orchestrator.tasks.step2_provisional_and_followups': {'queue': 'llm_queue'},
+    'apps.query_orchestrator.tasks.process_senior_advice': {'queue': 'llm_queue'},
+    'apps.query_orchestrator.tasks.step3_match_mentors': {'queue': 'default'},
+    'apps.query_orchestrator.tasks.finalize_query_async': {'queue': 'default'},
+    'apps.query_orchestrator.tasks.sync_active_load_to_neo4j': {'queue': 'default'},
+}
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://redis:6379/1'),
+    }
+}
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [os.getenv('REDIS_URL', 'redis://redis:6379/2')],
+        },
+    },
+}
 
 # Internal Service Auth
 INTERNAL_SECRET = os.getenv('INTERNAL_SECRET', 'internal_shared_secret')

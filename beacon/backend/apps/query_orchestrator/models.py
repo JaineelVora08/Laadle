@@ -90,6 +90,11 @@ class Query(models.Model):
     class Meta:
         app_label = 'query_orchestrator'
         ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['student', '-timestamp']),
+            models.Index(fields=['status', '-timestamp']),
+            models.Index(fields=['status', 'is_cluster_lead', 'response_deadline']),
+        ]
 
     def __str__(self):
         return f"Query {self.id} by {self.student_id} — {self.status}"
@@ -141,6 +146,10 @@ class SeniorQueryAssignment(models.Model):
     class Meta:
         app_label = 'query_orchestrator'
         unique_together = ('query', 'senior')
+        indexes = [
+            models.Index(fields=['senior', 'status']),
+            models.Index(fields=['query', 'status']),
+        ]
 
     def __str__(self):
         return f"Assignment {self.senior_id} → Query {self.query_id} [{self.status}]"

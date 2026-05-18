@@ -46,6 +46,10 @@ class MentorMatchingEngine:
         Filters: availability=True, active_load < threshold, level compatibility, trust_score desc
         Returns: list of matched senior dicts (MentorMatchResponse format)
         """
+        optimized = self.find_mentors_optimized(domain_id, top_k=top_k)
+        if optimized:
+            return optimized
+
         max_load = 10
         mentors = []
         seen_ids = set()  # guard against duplicate UserNodes
@@ -104,6 +108,40 @@ class MentorMatchingEngine:
 
         mentors.sort(key=lambda m: (m['trust_score'], -m['active_load']), reverse=True)
         return mentors[:max(1, int(top_k or 5))]
+
+    def find_mentors_optimized(self, domain_id: str, top_k: int = 5) -> list:
+        """Neo4j server-side mentor ranking for the common exact-domain path."""
+        from neomodel import db
+
+        query = """
+        MATCH (d:DomainNode {uid: $domain_id})<-[:EXPERIENCED_IN]-(s:UserNode {role: 'SENIOR'})
+        WHERE coalesce(s.availability, true) = true AND coalesce(s.active_load, 0) < 10
+        RETURN s.uid AS senior_id, s.name AS name, coalesce(s.trust_score, 0.0) AS trust_score,
+               coalesce(s.active_load, 0) AS active_load
+        ORDER BY trust_score DESC, active_load ASC
+        LIMIT $top_k
+        """
+        try:
+            results, _ = db.cypher_query(query, {
+                'domain_id': str(domain_id),
+                'top_k': max(1, int(top_k or 5)),
+            })
+        except Exception:
+            return []
+
+        return [
+            {
+                'senior_id': row[0],
+                'name': row[1],
+                'trust_score': float(row[2] or 0.0),
+                'domain': str(domain_id),
+                'experience_level': 'intermediate',
+                'availability': True,
+                'active_load': int(row[3] or 0),
+                'years_of_involvement': 0,
+            }
+            for row in results
+        ]
 
     def find_peers(self, student_id: str, domain_id: str = None, top_k: int = 10) -> list:
         """

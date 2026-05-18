@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from apps.auth_service.models import User
+from apps.core.cache import cache_get_or_set, invalidate_domains
 from .graph_models import UserNode, DomainNode, InterestedIn, ExperiencedIn
 from .serializers import (
     AddDomainRequestSerializer,
@@ -177,6 +178,7 @@ class AddDomainView(APIView):
                     )
                     domain_node.embedding_ref = domain_node.uid
                     domain_node.save()
+            invalidate_domains()
 
             # ── 6. Create relationship edge based on role ──
             if user.role == 'STUDENT':
@@ -362,22 +364,25 @@ class AllDomainsView(APIView):
     """
 
     def get(self, request):
-        try:
-            all_domains = DomainNode.nodes.all()
-        except Exception as neo4j_exc:
-            logger.warning('Neo4j unavailable in AllDomainsView.get: %s', neo4j_exc)
-            return Response([], status=status.HTTP_200_OK)
+        def build_domains():
+            try:
+                all_domains = DomainNode.nodes.all()
+            except Exception as neo4j_exc:
+                logger.warning('Neo4j unavailable in AllDomainsView.get: %s', neo4j_exc)
+                return []
 
-        data = [
-            {
-                'uid': d.uid,
-                'name': d.name,
-                'type': d.type,
-                'embedding_ref': d.embedding_ref or '',
-                'popularity_score': d.popularity_score or 0.0,
-            }
-            for d in all_domains
-        ]
+            return [
+                {
+                    'uid': d.uid,
+                    'name': d.name,
+                    'type': d.type,
+                    'embedding_ref': d.embedding_ref or '',
+                    'popularity_score': d.popularity_score or 0.0,
+                }
+                for d in all_domains
+            ]
+
+        data, _ = cache_get_or_set('domains:all', build_domains, ttl=1800)
         serializer = DomainNodeSerializer(data=data, many=True)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

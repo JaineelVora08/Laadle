@@ -67,6 +67,21 @@ class EmbeddingGenerator:
             print(f"[EmbeddingGenerator] E5 embed error: {e}")
             return [0.0] * 768
 
+    def generate_batch(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
+        """Embed passages in batches for FAQ/knowledge-base indexing."""
+        if not texts:
+            return []
+        try:
+            embeddings = self.model.encode(
+                [f"passage: {text}" for text in texts],
+                normalize_embeddings=True,
+                batch_size=batch_size,
+            )
+            return [embedding.tolist() for embedding in embeddings]
+        except Exception as e:
+            print(f"[EmbeddingGenerator] E5 batch embed error: {e}")
+            return [[0.0] * 768 for _ in texts]
+
     def generate_query_embedding(self, text: str) -> list:
         """
         Embed a *query* (search / retrieval intent).
@@ -90,6 +105,15 @@ class EmbeddingGenerator:
             print("[EmbeddingGenerator] Pinecone not configured, skipping store.")
             return False
         self.index.upsert(vectors=[(vector_id, embedding, metadata)])
+        return True
+
+    def store_batch(self, vectors: list[tuple[str, list, dict]], batch_size: int = 100) -> bool:
+        if not self.index:
+            print("[EmbeddingGenerator] Pinecone not configured, skipping batch store.")
+            return False
+        if not vectors:
+            return True
+        self.index.upsert(vectors=vectors, batch_size=batch_size)
         return True
 
     def query_similar(self, embedding: list, top_k: int = 5, filter: dict = None) -> list:

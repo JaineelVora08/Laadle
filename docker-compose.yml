@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-beacon_db}
+      POSTGRES_USER: ${POSTGRES_USER:-beacon_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-beacon_pass}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.22.1-p1
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-beacon_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-beacon_pass}
+      DB_NAME: ${POSTGRES_DB:-beacon_db}
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: 20
+      MAX_CLIENT_CONN: 200
+    depends_on:
+      - postgres
+    ports:
+      - "6432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./beacon/backend
+    command: daphne -b 0.0.0.0 -p 8000 beacon.asgi:application
+    env_file:
+      - ./beacon/backend/.env
+    depends_on:
+      - pgbouncer
+      - redis
+    ports:
+      - "8000:8000"
+
+  celery-llm:
+    build: ./beacon/backend
+    command: celery -A beacon worker -Q llm_queue -c 2 --loglevel=info
+    env_file:
+      - ./beacon/backend/.env
+    depends_on:
+      - backend
+      - redis
+
+  celery-embeddings:
+    build: ./beacon/backend
+    command: celery -A beacon worker -Q embedding_queue -c 4 --loglevel=info
+    env_file:
+      - ./beacon/backend/.env
+    depends_on:
+      - backend
+      - redis
+
+  celery-default:
+    build: ./beacon/backend
+    command: celery -A beacon worker -Q default -c 4 --loglevel=info
+    env_file:
+      - ./beacon/backend/.env
+    depends_on:
+      - backend
+      - redis
+
+  celery-beat:
+    build: ./beacon/backend
+    command: celery -A beacon beat --loglevel=info
+    env_file:
+      - ./beacon/backend/.env
+    depends_on:
+      - backend
+      - redis
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./beacon/frontend/dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres-data:

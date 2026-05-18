@@ -21,6 +21,8 @@ from .serializers import (
 )
 from .orchestrator import QueryOrchestrator
 from .models import Query, SeniorQueryAssignment
+from .tasks import create_pending_query, dispatch_pipeline, process_senior_advice
+from apps.core.pagination import TimestampPagination
 
 
 logger = logging.getLogger(__name__)
@@ -36,15 +38,25 @@ class SubmitQueryView(APIView):
         serializer = QuerySubmitRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        orchestrator = QueryOrchestrator()
-        result = orchestrator.handle_new_query(
+        query = create_pending_query(
             student_id=str(serializer.validated_data['student_id']),
             domain_ids=[str(d) for d in serializer.validated_data['domain_ids']],
             content=serializer.validated_data['content']
         )
+        dispatch_pipeline(str(query.id))
 
+        result = {
+            'query_id': str(query.id),
+            'status': query.status,
+            'provisional_answer': '',
+            'follow_up_questions': [],
+            'matched_seniors': [],
+            'timestamp': query.timestamp.isoformat(),
+            'cluster_id': str(query.cluster_id),
+            'cluster_student_count': 1,
+        }
         response_serializer = QuerySubmitResponseSerializer(result)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(response_serializer.data, status=status.HTTP_202_ACCEPTED)
 
 
 class QueryStatusView(APIView):
@@ -135,15 +147,30 @@ class SeniorResponseView(APIView):
         serializer = SeniorResponseRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        orchestrator = QueryOrchestrator()
-        result = orchestrator.handle_senior_response(
-            senior_id=str(serializer.validated_data['senior_id']),
-            query_id=str(query_id),
-            advice_content=serializer.validated_data['advice_content']
-        )
+        try:
+            query = Query.objects.get(id=query_id)
+            assignment = SeniorQueryAssignment.objects.select_related('senior').get(
+                query=query,
+                senior_id=str(serializer.validated_data['senior_id']),
+            )
+        except (Query.DoesNotExist, SeniorQueryAssignment.DoesNotExist):
+            return Response({'error': 'Assignment not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        response_serializer = SeniorResponseStep1ResponseSerializer(result)
-        return Response(response_serializer.data)
+        assignment.advice_content = serializer.validated_data['advice_content']
+        assignment.status = 'RESPONDED'
+        from django.utils import timezone as tz
+        assignment.responded_at = tz.now()
+        assignment.trust_score_at_response = assignment.senior.trust_score
+        assignment.save(update_fields=[
+            'advice_content', 'status', 'responded_at', 'trust_score_at_response'
+        ])
+        process_senior_advice.delay(str(assignment.id))
+
+        return Response({
+            'query_id': str(query.id),
+            'status': 'PROCESSING',
+            'detail': 'Advice recorded. FAQ prediction is running asynchronously.',
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class SeniorFAQResponseView(APIView):
@@ -209,10 +236,18 @@ class SeniorPendingQueriesView(APIView):
         pending = SeniorQueryAssignment.objects.filter(
             senior_id=senior_id,
             status='PENDING'
-        ).select_related('query')
+        ).select_related('query', 'query__cluster').only(
+            'id', 'status', 'query__id', 'query__content', 'query__status',
+            'query__rag_response', 'query__timestamp', 'query__follow_up_questions',
+            'query__matched_seniors', 'query__cluster__id',
+            'query__cluster__representative_content',
+        )
+        paginator = TimestampPagination()
+        paginator.ordering = '-query__timestamp'
+        page = paginator.paginate_queryset(pending, request, view=self)
 
         results = []
-        for assignment in pending:
+        for assignment in page:
             q = assignment.query
             # For clustered queries show representative content + student count
             cluster = q.cluster
@@ -233,7 +268,7 @@ class SeniorPendingQueriesView(APIView):
             })
 
         serializer = QuerySubmitResponseSerializer(results, many=True)
-        return Response(serializer.data)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class StudentQueriesView(APIView):
@@ -242,10 +277,14 @@ class StudentQueriesView(APIView):
     Returns all queries for a student with full resolution data.
     """
     def get(self, request, student_id):
-        queries = Query.objects.filter(student_id=student_id).order_by('-timestamp')
+        queries = Query.objects.filter(student_id=student_id).prefetch_related(
+            'assignments', 'conflicts'
+        ).order_by('-timestamp')
+        paginator = TimestampPagination()
+        page = paginator.paginate_queryset(queries, request, view=self)
 
         results = []
-        for q in queries:
+        for q in page:
             # Build contributing seniors
             contributing_seniors = []
             if q.status == 'RESOLVED':
@@ -305,7 +344,7 @@ class StudentQueriesView(APIView):
                 'finalized_by': q.finalized_by,
             })
 
-        return Response(results)
+        return paginator.get_paginated_response(results)
 
 
 class RateQueryView(APIView):

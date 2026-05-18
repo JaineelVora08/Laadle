@@ -65,6 +65,9 @@ class DirectMessage(models.Model):
     class Meta:
         app_label = 'direct_messaging_service'
         ordering = ['sent_at']
+        indexes = [
+            models.Index(fields=['chat_request', '-sent_at']),
+        ]
 
     def __str__(self):
         return f"DM {self.id} by {self.sender_id} at {self.sent_at}"

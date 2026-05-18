@@ -8,6 +8,8 @@ from rest_framework.response import Response
 import logging
 
 from apps.auth_service.models import Achievement, Senior, Student, User
+from apps.core.cache import cache_get_or_set, invalidate_profile
+from apps.core.pagination import CreatedAtPagination
 from .models import UserProfile
 from .serializers import AchievementSerializer, UpdateProfileSerializer, UserProfileResponseSerializer
 
@@ -74,7 +76,12 @@ class UserProfileView(APIView):
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         UserProfile.objects.get_or_create(user=user)
-        return Response(_build_profile_payload(user), status=status.HTTP_200_OK)
+        payload, _ = cache_get_or_set(
+            f'profile:{user_id}',
+            lambda: _build_profile_payload(user),
+            ttl=600,
+        )
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class UpdateProfileView(APIView):
@@ -122,6 +129,7 @@ class UpdateProfileView(APIView):
             senior.save()
 
         UserProfile.objects.get_or_create(user=user)
+        invalidate_profile(user.id)
         return Response(_build_profile_payload(user), status=status.HTTP_200_OK)
 
     def put(self, request, user_id):
@@ -163,6 +171,7 @@ class AchievementView(APIView):
 
         # ── Sync achievement to Neo4j as an EXPERIENCED_IN domain edge ──
         self._sync_achievement_to_graph(user, serializer.validated_data['title'])
+        invalidate_profile(user.id)
 
         output = AchievementSerializer(achievement)
         return Response(output.data, status=status.HTTP_201_CREATED)
@@ -224,8 +233,10 @@ class AchievementView(APIView):
             return Response({'detail': 'Forbidden.'}, status=status.HTTP_403_FORBIDDEN)
 
         achievements = Achievement.objects.filter(user=user).order_by('-created_at')
-        data = AchievementSerializer(achievements, many=True).data
-        return Response({'achievements': data}, status=status.HTTP_200_OK)
+        paginator = CreatedAtPagination()
+        page = paginator.paginate_queryset(achievements, request, view=self)
+        data = AchievementSerializer(page, many=True).data
+        return paginator.get_paginated_response({'achievements': data})
 
 
 class InternalProfileView(APIView):
@@ -241,6 +252,7 @@ class InternalProfileView(APIView):
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         UserProfile.objects.get_or_create(user=user)
+        invalidate_profile(user.id)
         return Response(_build_profile_payload(user), status=status.HTTP_200_OK)
 
     def patch(self, request, user_id):

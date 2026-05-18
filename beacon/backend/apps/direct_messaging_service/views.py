@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from apps.auth_service.models import User
+from apps.core.pagination import CreatedAtPagination, SentAtPagination
 from apps.query_orchestrator.models import Query
 from .models import ChatRequest, DirectMessage
 from .serializers import (
@@ -155,7 +156,9 @@ class MessageListCreateView(APIView):
             return err
 
         messages = chat_request.messages.select_related('sender').all()
-        return Response(DirectMessageSerializer(messages, many=True).data)
+        paginator = SentAtPagination()
+        page = paginator.paginate_queryset(messages, request, view=self)
+        return paginator.get_paginated_response(DirectMessageSerializer(page, many=True).data)
 
     def post(self, request, pk):
         chat_request, err = self._get_and_authorize(pk, request.user)
@@ -208,4 +211,6 @@ class ChatRequestListView(APIView):
         else:
             queryset = ChatRequest.objects.filter(student=user).select_related('student', 'senior', 'query')
 
-        return Response(ChatRequestResponseSerializer(queryset, many=True).data)
+        paginator = CreatedAtPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        return paginator.get_paginated_response(ChatRequestResponseSerializer(page, many=True).data)
